@@ -101,7 +101,7 @@ async function resolvePrinterName(): Promise<string | null> {
 const LABEL_WIDTH_MM = 39;
 const LABEL_HEIGHT_MM = 25;
 const DEFAULT_DPI = 300; // set to 203 for 203dpi printers
-const TOP_GAP_MM = 1; // extra blank gap at the very top (same as Multi)
+const TOP_GAP_MM = 0.3; // extra blank gap at the very top (same as Multi)
 const SHIFT_X_MM = 0; // keep 0 for perfect centering (Batch/Multi-style)
 
 function mmToIn(mm: number) {
