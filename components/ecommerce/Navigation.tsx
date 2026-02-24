@@ -92,7 +92,7 @@ const Navbar = () => {
             {/* ── Logo ── */}
             <Link href="/e-commerce" className="flex-shrink-0 flex items-center">
               <img
-                src="/logo.png"
+                src="/logo.jpg"
                 alt="Errum"
                 className="h-9 w-auto object-contain"
                 onError={e => {
