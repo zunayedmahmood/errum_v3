@@ -275,11 +275,26 @@ const SubcategoryProductTabs: React.FC<{ tabsCount?: number; productsPerTab?: nu
             </div>
             {activeTab?.category && (
               <button
-                onClick={() => router.push(`/e-commerce/${encodeURIComponent(catSlug(activeTab.category))}`)}
-                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition self-start sm:self-auto whitespace-nowrap" style={{ border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: 'rgba(255,255,255,0.7)' }} onMouseEnter={(e)=>{e.currentTarget.style.borderColor='var(--gold)';e.currentTarget.style.color='var(--gold-light)';}} onMouseLeave={(e)=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.15)';e.currentTarget.style.color='rgba(255,255,255,0.7)';}"
-              >
-                View all in {activeTab.category.name} →
-              </button>
+  onClick={() =>
+    router.push(`/e-commerce/${encodeURIComponent(catSlug(activeTab.category))}`)
+  }
+  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition self-start sm:self-auto whitespace-nowrap"
+  style={{
+    border: '1px solid rgba(255,255,255,0.15)',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.7)',
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.borderColor = 'var(--gold)';
+    e.currentTarget.style.color = 'var(--gold-light)';
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+    e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+  }}
+>
+  View all in {activeTab.category.name} →
+</button>
             )}
           </div>
 
@@ -397,7 +412,7 @@ const SubcategoryProductTabs: React.FC<{ tabsCount?: number; productsPerTab?: nu
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }} py-14 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.02)' }} py-14 text-center>
                 <p className="ec-heading text-lg font-medium " style={{ color: 'rgba(255,255,255,0.35)' }}>No products in this category yet</p>
                 <p className="mt-1 text-sm " style={{ color: 'rgba(255,255,255,0.25)' }}>Check back soon for new arrivals</p>
               </div>
