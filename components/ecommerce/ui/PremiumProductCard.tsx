@@ -23,7 +23,7 @@ const PremiumProductCard: React.FC<PremiumProductCardProps> = ({
   onAddToCart,
   compact = false,
 }) => {
-  const primaryImage = product.images?.[0]?.url || '';
+  const primaryImage = product.images?.find((img) => img?.is_primary)?.url || product.images?.[0]?.url || '';
   const shouldUseFallback = imageErrored || !primaryImage;
   const imageUrl = shouldUseFallback ? '/images/placeholder-product.jpg' : primaryImage;
 

@@ -306,18 +306,21 @@ const normalizeImage = (image: any, index = 0): ProductImage | null => {
 
 const normalizeImages = (images: any): ProductImage[] => {
   if (!Array.isArray(images)) return [];
-  const normalized = images
-    .map((img, idx) => normalizeImage(img, idx))
-    .filter((img): img is ProductImage => Boolean(img));
+  return images
+    .map((img, idx) => ({ raw: img, normalized: normalizeImage(img, idx), idx }))
+    .filter((row): row is { raw: any; normalized: ProductImage; idx: number } => Boolean(row.normalized))
+    .sort((a, b) => {
+      const aActive = a.raw?.is_active === false ? 0 : 1;
+      const bActive = b.raw?.is_active === false ? 0 : 1;
+      if (bActive !== aActive) return bActive - aActive;
 
-  // Sort: primary image first, then by display_order/id
-  normalized.sort((a, b) => {
-    if (a.is_primary && !b.is_primary) return -1;
-    if (!a.is_primary && b.is_primary) return 1;
-    return 0;
-  });
+      const aPrimary = a.normalized.is_primary ? 1 : 0;
+      const bPrimary = b.normalized.is_primary ? 1 : 0;
+      if (bPrimary !== aPrimary) return bPrimary - aPrimary;
 
-  return normalized;
+      return a.idx - b.idx;
+    })
+    .map((row) => row.normalized);
 };
 
 const normalizeCategory = (category: any): ProductCategory | null => {
@@ -393,7 +396,16 @@ const normalizeProduct = (
   const explicitInStock = raw?.in_stock;
   const inStock = typeof explicitInStock === 'boolean' ? explicitInStock : stockQty > 0;
 
-  const images = normalizeImages(raw?.images || raw?.product_images || raw?.media || []);
+  const images = (() => {
+    const list = normalizeImages(raw?.images || raw?.product_images || raw?.media || []);
+    if (list.length > 0) return list;
+
+    const single = normalizeImage(
+      raw?.primary_image || raw?.image || raw?.image_url || raw?.image_path || raw?.thumbnail || null,
+      0
+    );
+    return single ? [{ ...single, is_primary: true }] : [];
+  })();
 
   return {
     id: toNumber(raw?.id, 0),
