@@ -756,7 +756,7 @@ export default function ProductDetailPage() {
   // ---------------------------
   if (loading) {
     return (
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
@@ -770,7 +770,7 @@ export default function ProductDetailPage() {
 
   if (error || !product || !selectedVariant) {
     return (
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
@@ -823,7 +823,7 @@ export default function ProductDetailPage() {
   // Premium UI
   // ---------------------------
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
 
       <CartSidebar

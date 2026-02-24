@@ -2,136 +2,91 @@
 
 import React from "react";
 import Navigation from "@/components/ecommerce/Navigation";
-import { Phone, MapPin, MessageCircle } from "lucide-react";
+import { Phone, MapPin, MessageCircle, Clock } from "lucide-react";
 
 const locations = [
-  {
-    title: "Mirpur 12",
-    address: "Level 3, Hazi Kujrat Ali Mollah Market, Mirpur 12",
-    phone: "01942565664",
-  },
-  {
-    title: "Jamuna",
-    address: "3C-17A, Level 3, Jamuna",
-    phone: "01307130535",
-  },
-  {
-    title: "Bashundhara",
-    address: "38, 39, 40, Block D, Level 5, Bashundhara",
-    phone: "01336041064",
-  },
+  { title: "Mirpur 12",         address: "Level 3, Hazi Kujrat Ali Mollah Market, Mirpur 12", phone: "01942565664" },
+  { title: "Jamuna Future Park",address: "3C-17A, Level 3, Jamuna Future Park",                phone: "01307130535" },
+  { title: "Bashundhara City",  address: "38, 39, 40, Block D, Level 5, Bashundhara City",     phone: "01336041064" },
 ];
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
 
-      {/* Header */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-rose-100/60 blur-3xl" />
-          <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-rose-50/50 blur-3xl" />
-          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/95 to-white" />
+      {/* ── Header ── */}
+      <section className="ec-page-section relative overflow-hidden" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-32 top-0 h-80 w-80 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }} />
         </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-18">
-          <p className="text-[11px] uppercase tracking-widest text-gray-500">
-            Contact Errum
-          </p>
-          <h1 className="mt-2 text-3xl sm:text-4xl font-bold text-gray-900">
-            We&apos;re here to help.
+        <div className="ec-container relative">
+          <div className="ec-dark-tag mb-6">Get in Touch</div>
+          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(44px, 7vw, 88px)', fontWeight: 300, lineHeight: 0.95, letterSpacing: '-0.02em', color: 'white' }}>
+            We're Here<br />
+            <span style={{ fontWeight: 600, color: 'var(--gold)' }}>For You</span>
           </h1>
-          <p className="mt-4 max-w-2xl text-sm sm:text-base text-gray-600">
-            Visit one of our stores or reach us on phone/WhatsApp for quick
-            assistance and international orders.
+          <p className="mt-5 max-w-lg text-[15px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            Visit any of our three stores, call us directly, or reach out via WhatsApp. We're always happy to help.
           </p>
         </div>
       </section>
 
-      {/* Locations */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-3 gap-6">
-          {locations.map((loc) => (
-            <div
-              key={loc.title}
-              className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition"
-            >
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-neutral-900" />
-                <h3 className="text-base font-bold text-gray-900">
-                  {loc.title}
-                </h3>
-              </div>
-              <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-                {loc.address}
-              </p>
-
-              <div className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3 py-2">
-                <Phone className="h-4 w-4 text-gray-700" />
-                <span className="text-sm font-semibold text-gray-900">
+      {/* ── Stores ── */}
+      <section className="ec-page-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="ec-container">
+          <p className="ec-eyebrow mb-4">Store Locations</p>
+          <h2 className="mb-8" style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 500, color: 'white' }}>
+            Visit Us In Person
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {locations.map(loc => (
+              <div key={loc.title} className="ec-dark-card ec-dark-card-hover p-6">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: 'rgba(176,124,58,0.15)', border: '1px solid rgba(176,124,58,0.2)' }}>
+                  <MapPin className="h-5 w-5" style={{ color: 'var(--gold)' }} />
+                </div>
+                <h3 className="text-[16px] font-semibold text-white mb-3">{loc.title}</h3>
+                <p className="text-[13px] leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.45)' }}>{loc.address}</p>
+                <a href={`tel:${loc.phone}`} className="flex items-center gap-2 text-[13px] font-medium transition-colors" style={{ color: 'var(--gold-light)' }}
+                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+                   onMouseLeave={e => (e.currentTarget.style.color = 'var(--gold-light)')}>
+                  <Phone className="h-3.5 w-3.5" />
                   {loc.phone}
-                </span>
+                </a>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* WhatsApp + International */}
-        <div className="mt-10 rounded-2xl border border-gray-100 bg-gray-50/40 p-6">
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-col sm:flex-row justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-neutral-900" />
-                <h3 className="text-base font-bold text-gray-900">
-                  WhatsApp for International Orders ✈️
-                </h3>
-              </div>
-              <p className="mt-2 text-sm text-gray-600">
-                For overseas orders and fast support, message us directly.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-white border border-gray-100 px-4 py-2 text-sm font-semibold text-gray-900">
-              WhatsApp: 01942565664
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Optional simple contact form (no API required) */}
-      <section className="border-t border-gray-100">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <h2 className="text-xl font-bold text-gray-900">
-            Send us a message
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            This form is UI-only for now. You can connect it to your API later.
-          </p>
-
-          <div className="mt-6 grid gap-4">
-            <input
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-200"
-              placeholder="Your name"
-            />
-            <input
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-200"
-              placeholder="Your phone number"
-            />
-            <textarea
-              rows={5}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-200"
-              placeholder="Your message"
-            />
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-5 py-3 text-xs sm:text-sm font-semibold text-white hover:bg-black transition"
-              onClick={() => {
-                alert("Message form is not connected yet.");
-              }}
-            >
-              Send message
-            </button>
+      {/* ── Quick contact cards ── */}
+      <section className="ec-page-section">
+        <div className="ec-container">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              { icon: Phone,         title: 'Call Us',          sub: 'Available during store hours', action: 'tel:01942565664',              cta: '01942565664',      gold: true },
+              { icon: MessageCircle, title: 'WhatsApp',         sub: 'For international orders too', action: 'https://wa.me/8801942565664', cta: 'Chat on WhatsApp', gold: false },
+              { icon: Clock,         title: 'Store Hours',      sub: 'Sat – Thu: 10am – 9pm\nFri: 2pm – 9pm', action: null, cta: null, gold: false },
+            ].map(({ icon: Icon, title, sub, action, cta, gold }) => (
+              <div key={title} className="ec-dark-card p-6 flex flex-col gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: gold ? 'rgba(176,124,58,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${gold ? 'rgba(176,124,58,0.2)' : 'rgba(255,255,255,0.09)'}` }}>
+                  <Icon className="h-5 w-5" style={{ color: gold ? 'var(--gold)' : 'rgba(255,255,255,0.5)' }} />
+                </div>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-white">{title}</h3>
+                  <p className="mt-1 text-[13px] whitespace-pre-line" style={{ color: 'rgba(255,255,255,0.4)' }}>{sub}</p>
+                </div>
+                {action && cta && (
+                  <a href={action} target={action.startsWith('http') ? '_blank' : undefined} rel="noreferrer"
+                     className="mt-auto inline-flex items-center gap-1.5 text-[12px] font-medium transition-colors"
+                     style={{ color: 'var(--gold-light)' }}
+                     onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+                     onMouseLeave={e => (e.currentTarget.style.color = 'var(--gold-light)')}>
+                    {cta} →
+                  </a>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>

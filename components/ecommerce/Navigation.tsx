@@ -22,6 +22,7 @@ const Navbar = () => {
   const [showUser,         setShowUser]         = useState(false);
   const [showCats,         setShowCats]         = useState(false);
   const [mobileActiveCat,  setMobileActiveCat]  = useState<number | null>(null);
+  const [expandedCats,     setExpandedCats]     = useState<Set<number>>(new Set());
   const [scrolled,         setScrolled]         = useState(false);
 
   const userRef = useRef<HTMLDivElement>(null);
@@ -92,7 +93,7 @@ const Navbar = () => {
             {/* ── Logo ── */}
             <Link href="/e-commerce" className="flex-shrink-0 flex items-center">
               <img
-                src="/logo.jpg"
+                src="/logo.png"
                 alt="Errum"
                 className="h-9 w-auto object-contain"
                 onError={e => {
@@ -169,10 +170,10 @@ const Navbar = () => {
                             </div>
                           </Link>
 
-                          {/* Sub-category pills under each parent */}
+                          {/* Sub-category pills under each parent - all shown with toggle */}
                           {cat.children && cat.children.length > 0 && (
-                            <div className="pl-[46px] pb-1 flex flex-col gap-0.5">
-                              {cat.children.slice(0, 3).map(child => (
+                            <div className="pl-[46px] pb-2 flex flex-col gap-0.5">
+                              {(expandedCats.has(cat.id) ? cat.children : cat.children.slice(0, 3)).map(child => (
                                 <Link
                                   key={child.id}
                                   href={`/e-commerce/${encodeURIComponent(catSlug(child))}`}
@@ -183,7 +184,15 @@ const Navbar = () => {
                                 </Link>
                               ))}
                               {cat.children.length > 3 && (
-                                <span className="text-[11px] text-white/25">+{cat.children.length - 3} more</span>
+                                <button
+                                  onClick={e => { e.stopPropagation(); setExpandedCats(prev => { const s = new Set(prev); s.has(cat.id) ? s.delete(cat.id) : s.add(cat.id); return s; }); }}
+                                  className="text-[11px] text-left transition-colors mt-0.5"
+                                  style={{ color: 'var(--gold-light)' }}
+                                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+                                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--gold-light)')}
+                                >
+                                  {expandedCats.has(cat.id) ? '↑ Show less' : `+ ${cat.children.length - 3} more`}
+                                </button>
                               )}
                             </div>
                           )}

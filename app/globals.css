@@ -260,3 +260,61 @@ body {
 .ec-delay-4 { animation-delay: 0.5s; }
 .ec-delay-5 { animation-delay: 0.65s; }
 .ec-delay-6 { animation-delay: 0.8s; }
+
+/* ─── Dark page theme (applied to all ec-root pages) ───── */
+@layer components {
+  /* Dark surface cards used on dark-bg pages */
+  .ec-dark-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 16px;
+  }
+  .ec-dark-card-hover {
+    transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+  }
+  .ec-dark-card-hover:hover {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.15);
+    transform: translateY(-1px);
+  }
+
+  /* Page section on dark bg */
+  .ec-page-section {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  /* Tag/badge for dark bg */
+  .ec-dark-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    font-family: "DM Mono", monospace;
+  }
+
+  .ec-dark-input {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: "Jost", sans-serif;
+    color: rgba(255,255,255,0.9);
+    outline: none;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+  .ec-dark-input::placeholder { color: rgba(255,255,255,0.25); }
+  .ec-dark-input:focus {
+    border-color: var(--gold);
+    background: rgba(255,255,255,0.07);
+  }
+}

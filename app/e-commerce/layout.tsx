@@ -17,7 +17,7 @@ export default function EcommerceLayout({
         <Suspense fallback={null}>
           <ScrollToTopOnRouteChange />
         </Suspense>
-        <div className="ec-root min-h-screen" style={{ background: 'var(--paper)' }}>
+        <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         {children}
         <Footer />
         </div>

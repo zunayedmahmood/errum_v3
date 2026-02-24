@@ -122,7 +122,7 @@ export default function ProductsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
 
         <div className="max-w-7xl mx-auto px-4 py-8">

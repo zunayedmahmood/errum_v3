@@ -226,7 +226,7 @@ export default function CartPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -240,7 +240,7 @@ export default function CartPage() {
 
   if (error && !cart) {
     return (
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -261,7 +261,7 @@ export default function CartPage() {
 
   if (!cart?.cart_items || cart.cart_items.length === 0) {
     return (
-      <div className="min-h-screen bg-transparent">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -281,7 +281,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         

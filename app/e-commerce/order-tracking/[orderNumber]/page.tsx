@@ -87,7 +87,7 @@ export default function OrderTrackingPage() {
   // Search Form (when no order number in URL)
   if (!orderNumber || (!loading && !order)) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="bg-white rounded-lg shadow-md p-8">
@@ -150,7 +150,7 @@ export default function OrderTrackingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
           <div className="text-center">
@@ -167,7 +167,7 @@ export default function OrderTrackingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
       
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

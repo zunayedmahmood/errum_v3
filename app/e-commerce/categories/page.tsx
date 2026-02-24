@@ -2,73 +2,147 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Grid3X3, Loader2, AlertCircle } from 'lucide-react';
-
+import { Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 import Navigation from '@/components/ecommerce/Navigation';
-import catalogService, { Category } from '@/services/catalogService';
+import catalogService, { CatalogCategory } from '@/services/catalogService';
+
+const slugify = (v: string) =>
+  v.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+
+const PALETTE = [
+  ['#e8e4df','#b8b0a8'],['#dde4e8','#a0afc0'],['#ede8e0','#c4b89a'],
+  ['#e0e8e4','#9abfb0'],['#e8e0e8','#b898b8'],['#e8e8de','#b8b89a'],
+  ['#e0e4e8','#9aaab8'],['#ece8e0','#ccc0a0'],['#e4e8e4','#a0b8a0'],['#e8e4e0','#c0b8b0'],
+];
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<CatalogCategory[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [error,      setError]      = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await catalogService.getCategories();
-        setCategories(Array.isArray(data) ? (data as Category[]) : ((data as any)?.categories || []));
-      } catch (err: any) {
-        console.error('Failed to fetch categories:', err);
-        setError('Failed to load categories. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    catalogService.getCategories()
+      .then(data => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => setError('Failed to load categories.'))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="flex items-start justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
-            <p className="text-gray-600 mt-1">Browse products by category</p>
-          </div>
-          <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center">
-            <Grid3X3 className="text-neutral-900" />
-          </div>
+      {/* Header */}
+      <section className="ec-page-section relative overflow-hidden" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div className="pointer-events-none absolute -left-32 top-0 h-80 w-80 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, var(--gold) 0%, transparent 70%)' }} />
+        <div className="ec-container relative">
+          <div className="ec-dark-tag mb-6">All Collections</div>
+          <h1 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(40px, 7vw, 80px)', fontWeight: 300, lineHeight: 0.95, letterSpacing: '-0.02em', color: 'white' }}>
+            Shop by<br />
+            <span style={{ fontWeight: 600, color: 'var(--gold)' }}>Category</span>
+          </h1>
         </div>
+      </section>
 
-        {error && (
-          <div className="mb-6 bg-rose-50 border border-rose-200 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="text-rose-600 flex-shrink-0 mt-0.5" size={20} />
-            <p className="text-neutral-900 text-sm">{error}</p>
-          </div>
-        )}
+      {/* Categories */}
+      <section className="ec-page-section">
+        <div className="ec-container">
+          {loading ? (
+            <div className="flex justify-center py-24">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--gold)' }} />
+            </div>
+          ) : error ? (
+            <div className="flex items-center gap-3 rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <AlertCircle className="h-5 w-5 text-red-400" />
+              <p className="text-red-300 text-[14px]">{error}</p>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {categories.map((cat, ci) => {
+                const [from, to] = PALETTE[ci % PALETTE.length];
+                const imgSrc = cat.image || cat.image_url || '';
+                const href = `/e-commerce/${encodeURIComponent(cat.slug || slugify(cat.name))}`;
+                const children = cat.children || [];
 
-        {loading ? (
-          <div className="text-center py-20">
-            <Loader2 className="animate-spin h-10 w-10 text-neutral-900 mx-auto mb-3" />
-            <p className="text-gray-600">Loading categories...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={`/e-commerce/${encodeURIComponent(cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'))}`}
-                className="bg-white rounded-xl border hover:border-rose-200 hover:shadow-sm transition p-4"
-              >
-                <div className="text-gray-900 font-semibold">{cat.name}</div>
-                <div className="text-xs text-gray-500 mt-1">Explore →</div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div></div>
+                return (
+                  <div key={cat.id}>
+                    {/* Parent category header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <Link href={href} className="group flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold" style={{ background: 'rgba(176,124,58,0.15)', border: '1px solid rgba(176,124,58,0.2)', color: 'var(--gold)', fontFamily: "'Cormorant Garamond', serif", fontSize: '18px' }}>
+                          {cat.name.charAt(0)}
+                        </div>
+                        <div>
+                          <h2 className="text-[18px] font-semibold text-white group-hover:text-[var(--gold-light)] transition-colors" style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.01em' }}>
+                            {cat.name}
+                          </h2>
+                          {Number(cat.product_count || 0) > 0 && (
+                            <p style={{ fontSize: '10px', fontFamily: "'DM Mono', monospace", letterSpacing: '0.12em', color: 'rgba(255,255,255,0.3)' }}>
+                              {cat.product_count} ITEMS
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+                      <Link href={href} className="flex items-center gap-1 text-[11px] transition-colors"
+                            style={{ color: 'var(--gold-light)', fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold)')}
+                            onMouseLeave={e => (e.currentTarget.style.color = 'var(--gold-light)')}>
+                        VIEW ALL <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+
+                    {/* Subcategory portrait grid */}
+                    {children.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+                        {children.map((child, cIdx) => {
+                          const [cf, ct] = PALETTE[(ci * 3 + cIdx) % PALETTE.length];
+                          const cImg = child.image || child.image_url || '';
+                          return (
+                            <Link
+                              key={child.id}
+                              href={`/e-commerce/${encodeURIComponent(child.slug || slugify(child.name))}`}
+                              className="group block"
+                            >
+                              <div className="relative overflow-hidden rounded-xl transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg" style={{ aspectRatio: '3/4' }}>
+                                {cImg ? (
+                                  <img src={cImg} alt={child.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />
+                                ) : (
+                                  <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${cf} 0%, ${ct} 100%)` }} />
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                                <div className="absolute inset-x-0 bottom-0 p-2">
+                                  <p className="text-white font-medium leading-tight text-[11px]" style={{ fontFamily: "'Jost', sans-serif" }}>{child.name}</p>
+                                </div>
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Leaf category (no children) - bigger card */
+                      <Link href={href} className="group block">
+                        <div className="relative overflow-hidden rounded-2xl h-24 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg">
+                          {imgSrc ? (
+                            <img src={imgSrc} alt={cat.name} className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" onError={e => { (e.currentTarget as HTMLImageElement).style.display='none'; }} />
+                          ) : (
+                            <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${from} 0%, ${to} 100%)` }} />
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
+                          <div className="absolute inset-0 flex items-center px-5">
+                            <p className="text-white text-lg font-semibold" style={{ fontFamily: "'Cormorant Garamond', serif" }}>{cat.name}</p>
+                          </div>
+                        </div>
+                      </Link>
+                    )}
+
+                    {/* Divider */}
+                    <div className="mt-8" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

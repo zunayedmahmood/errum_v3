@@ -10,7 +10,7 @@ import SubcategoryProductTabs from '@/components/ecommerce/SubcategoryProductTab
 
 export default function HomePage() {
   return (
-    <div className="ec-root min-h-screen" style={{ background: 'var(--paper)' }}>
+    <div className="ec-root min-h-screen" style={{ background: 'var(--ink)' }}>
       <Navigation />
       <HeroSection />
       <div style={{ paddingBottom: '3rem' }}>
