@@ -395,7 +395,7 @@ export default function CartPage() {
                         <button
                           onClick={() => handleRemoveItem(item.id)}
                           disabled={isItemUpdating}
-                          className="absolute -top-2 -right-2 p-1 bg-white rounded-lg-full shadow-md hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="absolute -top-2 -right-2 p-1 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: 'rgba(13,13,13,0.8)', border: '1px solid rgba(255,255,255,0.15)' }}
                         >
                           {isItemUpdating ? (
                             <Loader2 size={16} className="text-neutral-500 animate-spin" />
@@ -477,7 +477,7 @@ export default function CartPage() {
                             }
                           }}
                           disabled={isItemUpdating}
-                          className="w-16 text-center border-x border-neutral-300 outline-none py-2 disabled:bg-neutral-50"
+                          className="w-16 text-center outline-none py-2 text-white" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'transparent' }}
                           min="1"
                           max={item.product.stock_quantity}
                         />

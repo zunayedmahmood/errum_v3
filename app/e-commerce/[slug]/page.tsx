@@ -563,12 +563,12 @@ export default function CategoryPage() {
         <div className="ec-root min-h-screen">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="animate-pulse">
-              <div className="h-8 bg-gray-200 rounded w-1/4 mb-8"></div>
+              <div className="h-8 rounded w-1/4 mb-8 animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }}></div>
               <div className="flex gap-8">
-                <div className="w-64 h-96 bg-gray-200 rounded-lg"></div>
+                <div className="w-64 h-96 rounded-lg animate-pulse" style={{ background: 'rgba(255,255,255,0.08)' }}></div>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[...Array(6)].map((_, i) => (
-                    <div key={i} className="bg-white rounded-lg shadow-sm">
+                    <div key={i} className="ec-dark-card">
                       <div className="h-64 bg-gray-200 rounded-t-lg"></div>
                       <div className="p-4 space-y-2">
                         <div className="h-4 bg-gray-200 rounded"></div>
@@ -663,7 +663,7 @@ export default function CategoryPage() {
                       return (
                         <div
                           key={product.id}
-                          className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden group"
+                          className="ec-dark-card ec-dark-card-hover overflow-hidden group"
                         >
                           <div
                             className="relative h-64 bg-gray-100 cursor-pointer"
@@ -719,7 +719,7 @@ export default function CategoryPage() {
                       <button
                         onClick={() => handlePageChange(currentPage - 1)}
                         disabled={currentPage === 1}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        className="px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors" style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.7)' }}
                       >
                         Previous
                       </button>
@@ -742,7 +742,7 @@ export default function CategoryPage() {
                       <button
                         onClick={() => handlePageChange(currentPage + 1)}
                         disabled={currentPage === totalPages}
-                        className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                        className="px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors" style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.7)' }}
                       >
                         Next
                       </button>

@@ -86,7 +86,7 @@ export default function OrderConfirmationPage() {
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Success Message */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8 text-center">
+        <div className="ec-dark-card p-8 mb-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
               <CheckCircle className="text-green-600" size={48} />
@@ -98,7 +98,7 @@ export default function OrderConfirmationPage() {
             Thank you for your order. We've received your order and will process it soon.
           </p>
           
-          <div className="bg-gray-50 rounded-lg p-4 inline-block">
+          <div className="rounded-lg p-4 inline-block" style={{ background: 'rgba(255,255,255,0.06)' }}>
             <p className="text-sm text-gray-600 mb-1">Order Number</p>
             <p className="text-2xl font-bold text-neutral-900">{order.order_number}</p>
           </div>
@@ -122,7 +122,7 @@ export default function OrderConfirmationPage() {
           
           <button
             onClick={handlePrint}
-            className="bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="ec-btn flex items-center gap-2" style={{ border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.8)' }}
           >
             <Printer size={20} />
             Print
@@ -130,7 +130,7 @@ export default function OrderConfirmationPage() {
           
           <button
             onClick={() => router.push('/')}
-            className="bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center gap-2"
+            className="ec-btn flex items-center gap-2" style={{ border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.8)' }}
           >
             <Home size={20} />
             Continue Shopping
@@ -138,7 +138,7 @@ export default function OrderConfirmationPage() {
         </div>
 
         {/* Order Details */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="ec-dark-card p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Order Details</h2>
           
           <div className="grid md:grid-cols-2 gap-6 mb-6">

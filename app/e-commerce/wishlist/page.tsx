@@ -70,9 +70,9 @@ export default function WishlistPage() {
 
             <h1 className="text-3xl font-bold text-gray-900 mb-8">My Wishlist</h1>
             
-            <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+            <div className="ec-dark-card p-12 text-center">
               <div className="max-w-md mx-auto">
-                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(255,255,255,0.08)' }}>
                   <Heart size={48} className="text-gray-300" />
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>
@@ -81,7 +81,7 @@ export default function WishlistPage() {
                 </p>
                 <button 
                   onClick={() => router.push('/e-commerce')}
-                  className="bg-neutral-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-neutral-800 transition-colors"
+                  className="ec-btn ec-btn-gold"
                 >
                   Continue Shopping
                 </button>
@@ -121,11 +121,11 @@ export default function WishlistPage() {
             {wishlistItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 group"
+                className="ec-dark-card ec-dark-card-hover overflow-hidden group" style={{ borderRadius: '14px' }}
               >
                 <div 
                   onClick={() => handleNavigateToProduct(item.id)}
-                  className="relative aspect-square overflow-hidden bg-gray-100 cursor-pointer"
+                  className="relative aspect-square overflow-hidden cursor-pointer" style={{ background: 'rgba(255,255,255,0.04)' }}
                 >
                   <img
                     src={item.image}
@@ -143,7 +143,7 @@ export default function WishlistPage() {
                       e.stopPropagation();
                       handleRemove(item.id);
                     }}
-                    className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-lg hover:bg-rose-50 transition-colors z-10"
+                    className="absolute top-3 right-3 p-2 rounded-full z-10 transition-colors" style={{ background: 'rgba(13,13,13,0.7)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(4px)' }}
                     title="Remove from wishlist"
                   >
                     <X size={16} className="text-gray-700 hover:text-rose-600" />
@@ -153,7 +153,7 @@ export default function WishlistPage() {
                 <div className="p-4">
                   <h3 
                     onClick={() => handleNavigateToProduct(item.id)}
-                    className="text-sm font-semibold text-gray-900 mb-2 line-clamp-2 min-h-[2.5rem] hover:text-rose-600 cursor-pointer transition-colors"
+                    className="text-sm font-semibold mb-2 line-clamp-2 min-h-[2.5rem] cursor-pointer transition-colors text-white"
                   >
                     {item.name}
                   </h3>
