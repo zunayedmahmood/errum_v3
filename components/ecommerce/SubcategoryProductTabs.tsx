@@ -134,6 +134,7 @@ const SubcategoryProductTabs: React.FC<SubcategoryProductTabsProps> = ({
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const [heroImgByCat, setHeroImgByCat] = useState<Record<number, string>>({});
   const [parentLabel, setParentLabel] = useState<string>('');
+  const [showAllTabs, setShowAllTabs] = useState(false);
 const findParentNode = (flat: CatalogCategory[], queries: string[]): CatalogCategory | null => {
   const q = (queries || []).map(normalizeKey).filter(Boolean);
   if (!q.length) return null;
@@ -394,6 +395,11 @@ if (!selected.length) {
   if (!tabs.length) return null;
 
   /* ── main ── */
+  const MAX_VISIBLE_TABS = 10; // includes the 3 banner cards
+  const collapsedEnd = Math.min(tabs.length, MAX_VISIBLE_TABS);
+  const pillTabs = tabs.slice(3, showAllTabs ? tabs.length : collapsedEnd);
+  const canLoadMore = tabs.length > MAX_VISIBLE_TABS;
+
   return (
     <section className="ec-section">
       <div className="ec-container">
@@ -402,9 +408,9 @@ if (!selected.length) {
           {/* Header */}
           <div className="px-4 pt-6 pb-5 sm:px-6 lg:px-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="ec-eyebrow">{eyebrow ?? (parentLabel || 'Collections')}</p>
+              <p className="ec-eyebrow">{eyebrow ?? 'Browse by subcategory'}</p>
               <h2 style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(22px,4vw,36px)', fontWeight: 500, color: 'white', letterSpacing: '-0.01em' }}>
-                {title ?? 'Shop by Subcategory'}
+                {title ?? (parentLabel ? `Shop ${parentLabel}` : 'Shop')}
               </h2>
               <p className="mt-1 text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>{subtitle ?? (parentLabel ? `Select a ${parentLabel} collection to explore the latest styles` : 'Select a collection to explore the latest styles')}</p>
             </div>
@@ -502,7 +508,7 @@ if (!selected.length) {
             {/* Extra tabs beyond first 3 as slim pill buttons */}
             {tabs.length > 3 && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {tabs.slice(3).map(cat => (
+                {pillTabs.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setActiveId(cat.id)}
@@ -512,6 +518,30 @@ if (!selected.length) {
                   </button>
                 ))}
               </div>
+              {canLoadMore && (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTabs(v => !v)}
+                    className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition"
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'rgba(255,255,255,0.7)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--gold)';
+                      e.currentTarget.style.color = 'var(--gold-light)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                    }}
+                  >
+                    {showAllTabs ? 'Show less' : `Load more (${tabs.length - MAX_VISIBLE_TABS} more)`}
+                  </button>
+                </div>
+              )}
             )}
           </div>
 
@@ -553,6 +583,30 @@ if (!selected.length) {
               >
                 <p className="ec-heading text-lg font-medium " style={{ color: 'rgba(255,255,255,0.35)' }}>No products in this category yet</p>
                 <p className="mt-1 text-sm " style={{ color: 'rgba(255,255,255,0.25)' }}>Check back soon for new arrivals</p>
+              </div>
+            )}
+
+            {activeTab?.category && (
+              <div className="mt-7 flex justify-end">
+                <button
+                  onClick={() => router.push(`/e-commerce/${encodeURIComponent(catSlug(activeTab.category))}`)}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition whitespace-nowrap"
+                  style={{
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    background: 'transparent',
+                    color: 'rgba(255,255,255,0.7)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--gold)';
+                    e.currentTarget.style.color = 'var(--gold-light)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                  }}
+                >
+                  View all in {activeTab.category.name} →
+                </button>
               </div>
             )}
           </div>
