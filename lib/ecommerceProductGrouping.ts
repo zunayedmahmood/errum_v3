@@ -57,6 +57,28 @@ export function getProductPrimaryImage(product: any): string {
   return primary?.url || '/placeholder-product.png';
 }
 
+/**
+ * Given a list of variant-level product objects, find the first non-empty
+ * image array across all of them and return it.  Returns [] if none have images.
+ */
+function pickFallbackImages(variants: any[]): any[] {
+  for (const v of variants) {
+    const imgs = Array.isArray(v?.images) ? v.images : [];
+    if (imgs.length > 0) return imgs;
+  }
+  return [];
+}
+
+/**
+ * Apply the fallback image set to any variant that has an empty images array.
+ */
+function applyImageFallback<T extends { images?: any[] }>(variants: T[], fallback: any[]): T[] {
+  if (!fallback.length) return variants;
+  return variants.map((v) =>
+    Array.isArray(v.images) && v.images.length > 0 ? v : { ...v, images: fallback }
+  );
+}
+
 export function getMotherBaseName(product: any): string {
   return getBaseProductName(product?.name || '', product?.base_name || undefined);
 }
@@ -234,6 +256,16 @@ export function groupProductsByMother(
 
     const representative = variants.find((v) => v.in_stock) || variants[0];
 
+    // Propagate images: if representative has none, use any variant that does
+    const allRaws = variants.map((v) => v.raw);
+    const fallbackImgs = pickFallbackImages(allRaws);
+    const representativeImage =
+      (representative?.raw?.images?.length > 0
+        ? representative.image
+        : fallbackImgs.length > 0
+        ? fallbackImgs[0]?.url || '/placeholder-product.png'
+        : representative?.image) || '/placeholder-product.png';
+
     return {
       ...group,
       baseName: canonicalBaseName,
@@ -241,7 +273,7 @@ export function groupProductsByMother(
       totalVariants: variants.length,
       hasVariations: variants.length > 1,
       representativeId: representative?.id || group.representativeId,
-      primaryImage: representative?.image || group.primaryImage,
+      primaryImage: representativeImage,
     };
   });
 }
@@ -274,7 +306,11 @@ export function adaptCatalogGroupedProducts(
       });
 
       const allVariants = Array.from(uniqueById.values());
-      const mappedVariants: GroupedVariant[] = allVariants.map((variant: any) => ({
+
+      // Apply cross-variant image fallback before building mapped variants
+      const fallbackImgs = pickFallbackImages(allVariants);
+      const allVariantsWithImages = applyImageFallback(allVariants, fallbackImgs);
+      const mappedVariants: GroupedVariant[] = allVariantsWithImages.map((variant: any) => ({
         id: Number(variant.id),
         name: variant.name || '',
         sku: variant.sku,

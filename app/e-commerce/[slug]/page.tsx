@@ -135,10 +135,25 @@ const buildCardProductsFromFlatCatalog = (rawProducts: (Product | SimpleProduct)
     });
 
     const all = Array.from(uniqueVariants.values());
+
+    // Propagate images: find whichever variant has images and copy to all others
+    const fallbackImages =
+      all.find((v) => (v as any).images?.some((img: any) => img?.is_primary))?.images ||
+      all.find((v) => Array.isArray((v as any).images) && (v as any).images.length > 0)?.images ||
+      [];
+    const allWithImages = fallbackImages.length
+      ? all.map((v) =>
+          Array.isArray((v as any).images) && (v as any).images.length > 0
+            ? v
+            : { ...(v as any), images: fallbackImages }
+        )
+      : all;
+
     const representative =
+      (allWithImages.find((v) => Number(v.id) === Number((group.representative as any)?.id)) as SimpleProduct) ||
       (group.representative as SimpleProduct) ||
-      all.find((variant) => Number(variant.stock_quantity || 0) > 0) ||
-      all[0];
+      allWithImages.find((variant) => Number(variant.stock_quantity || 0) > 0) ||
+      allWithImages[0];
 
     if (!representative) {
       return {
@@ -158,7 +173,7 @@ const buildCardProductsFromFlatCatalog = (rawProducts: (Product | SimpleProduct)
       } as SimpleProduct;
     }
 
-    const variantsWithoutRepresentative = all.filter(
+    const variantsWithoutRepresentative = allWithImages.filter(
       (variant) => Number(variant.id) !== Number(representative.id)
     );
 
