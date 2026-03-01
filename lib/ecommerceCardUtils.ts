@@ -79,6 +79,9 @@ const propagateImagesAcrossVariants = (card: SimpleProduct): SimpleProduct => {
 
   return card;
 };
+
+
+
 const groupToCardProduct = (group: GroupedProduct): SimpleProduct => {
   const rawVariants = [group.main_variant, ...(group.variants || [])].filter(Boolean) as SimpleProduct[];
   const allVariants = dedupeVariants(rawVariants);
@@ -106,18 +109,69 @@ const groupToCardProduct = (group: GroupedProduct): SimpleProduct => {
 
   const card: SimpleProduct = {
     ...main,
+    // Prefer group base name for the card title
     name: group.base_name || main.base_name || main.display_name || main.name,
     display_name: group.base_name || main.display_name || main.base_name || main.name,
     base_name: group.base_name || main.base_name || main.display_name || main.name,
+
     description: group.description ?? main.description,
     category: group.category || main.category,
+
     has_variants: Boolean(group.has_variants || allVariants.length > 1),
     total_variants: allVariants.length,
     variants: allVariants,
+  };
 
   return propagateImagesAcrossVariants(card);
-  };
 };
+
+
+
+
+
+// const groupToCardProduct = (group: GroupedProduct): SimpleProduct => {
+//   const rawVariants = [group.main_variant, ...(group.variants || [])].filter(Boolean) as SimpleProduct[];
+//   const allVariants = dedupeVariants(rawVariants);
+//   const main = group.main_variant || allVariants[0];
+
+//   if (!main) {
+//     return {
+//       id: 0,
+//       name: group.base_name || 'Product',
+//       display_name: group.base_name || 'Product',
+//       base_name: group.base_name || undefined,
+//       variation_suffix: '',
+//       sku: '',
+//       selling_price: 0,
+//       stock_quantity: 0,
+//       description: group.description || '',
+//       images: [],
+//       category: group.category,
+//       in_stock: false,
+//       has_variants: false,
+//       total_variants: 1,
+//       variants: [],
+//     };
+//   }
+//     const card = {
+//     ...base,
+//     id: base.id,
+//     name: base.name,
+//     slug: base.slug,
+//     sku: base.sku,
+
+//     images: base.images ?? [],
+//     in_stock: base.in_stock,
+//     stock_quantity: base.stock_quantity,
+
+//     total_variants: allVariants.length,
+//     variants: allVariants,
+//   };
+
+//   return propagateImagesAcrossVariants(card);
+
+  
+// };
 
 /**
  * Returns one card product per base product (main variant + attached variant list).
