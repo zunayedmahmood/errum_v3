@@ -16,6 +16,24 @@ interface FeaturedProductsProps {
   limit?: number;
 }
 
+
+const pickSharedImages = (items: SimpleProduct[]): SimpleProduct['images'] => {
+  for (const p of items) {
+    const imgs = (p as any)?.images;
+    if (Array.isArray(imgs) && imgs.length > 0) return imgs;
+  }
+  return [];
+};
+
+const applySharedImages = (main: SimpleProduct, variants: SimpleProduct[]): { main: SimpleProduct; variants: SimpleProduct[] } => {
+  const shared = pickSharedImages([main, ...variants]);
+  if (shared.length === 0) return { main, variants };
+
+  const fixedMain = (!Array.isArray(main.images) || main.images.length === 0) ? { ...main, images: shared } : main;
+  const fixedVariants = variants.map(v => (Array.isArray(v.images) && v.images.length > 0) ? v : { ...v, images: shared });
+  return { main: fixedMain, variants: fixedVariants };
+};
+
 const pickMainVariant = (variants: SimpleProduct[]): SimpleProduct => {
   const sorted = [...variants].sort((a, b) => {
     const aStock = Number(a.stock_quantity || 0) > 0 ? 1 : 0;
@@ -42,13 +60,14 @@ const groupFeaturedVariants = (items: SimpleProduct[]): SimpleProduct[] => {
   const cards: SimpleProduct[] = [];
   buckets.forEach((variants) => {
     if (!variants.length) return;
-    const main = pickMainVariant(variants);
+    const mainRaw = pickMainVariant(variants);
+    const { main, variants: fixedVariants } = applySharedImages(mainRaw, variants);
     cards.push({
       ...main,
       display_name: main.base_name || main.display_name || main.name,
       has_variants: variants.length > 1,
       total_variants: variants.length,
-      variants,
+      variants: fixedVariants,
     });
   });
   return cards;

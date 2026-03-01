@@ -49,13 +49,36 @@ const dedupeVariants = (variants: SimpleProduct[]): SimpleProduct[] => {
   return list;
 };
 
-const pickBestImages = (variants: SimpleProduct[]): SimpleProduct['images'] => {
-  for (const v of variants) {
-    if (Array.isArray(v?.images) && v.images.length > 0) return v.images;
+
+
+const pickSharedImages = (items: SimpleProduct[]): SimpleProduct['images'] => {
+  for (const p of items) {
+    const imgs = (p as any)?.images;
+    if (Array.isArray(imgs) && imgs.length > 0) return imgs;
   }
   return [];
 };
 
+const propagateImagesAcrossVariants = (card: SimpleProduct): SimpleProduct => {
+  const variants = getVariantListForCard(card);
+  const shared = pickSharedImages([card, ...variants]);
+  if (shared.length === 0) return card;
+
+  // Ensure card has an image
+  if (!Array.isArray(card.images) || card.images.length === 0) {
+    (card as any).images = shared;
+  }
+
+  // Ensure every variant has an image (so variant capsules/thumbnails don't show placeholders)
+  if (Array.isArray((card as any).variants)) {
+    (card as any).variants = (card as any).variants.map((v: any) => {
+      const vImgs = Array.isArray(v?.images) ? v.images : [];
+      return vImgs.length > 0 ? v : { ...v, images: shared };
+    });
+  }
+
+  return card;
+};
 const groupToCardProduct = (group: GroupedProduct): SimpleProduct => {
   const rawVariants = [group.main_variant, ...(group.variants || [])].filter(Boolean) as SimpleProduct[];
   const allVariants = dedupeVariants(rawVariants);
@@ -81,26 +104,18 @@ const groupToCardProduct = (group: GroupedProduct): SimpleProduct => {
     };
   }
 
-  // Some endpoints attach media/stock only to certain variants. Prefer the best available signals.
-  const bestImages = pickBestImages(allVariants);
-
-  const groupedTotalStock = toNumber((group as any)?.total_stock);
-  const groupedInStockVariants = toNumber((group as any)?.in_stock_variants);
-  const groupedHasStock = groupedTotalStock > 0 || groupedInStockVariants > 0;
-
-  return {
+  const card: SimpleProduct = {
     ...main,
     name: group.base_name || main.base_name || main.display_name || main.name,
     display_name: group.base_name || main.display_name || main.base_name || main.name,
     base_name: group.base_name || main.base_name || main.display_name || main.name,
     description: group.description ?? main.description,
     category: group.category || main.category,
-    images: (Array.isArray(main.images) && main.images.length > 0) ? main.images : bestImages,
-    stock_quantity: groupedTotalStock > 0 ? groupedTotalStock : toNumber((main as any)?.stock_quantity),
-    in_stock: groupedHasStock ? true : (typeof (main as any)?.in_stock === 'boolean' ? (main as any).in_stock : toNumber((main as any)?.stock_quantity) > 0),
     has_variants: Boolean(group.has_variants || allVariants.length > 1),
     total_variants: allVariants.length,
     variants: allVariants,
+
+  return propagateImagesAcrossVariants(card);
   };
 };
 
@@ -139,17 +154,13 @@ export const getAdditionalVariantCount = (product: SimpleProduct): number => {
 };
 
 export const getCardStockLabel = (product: SimpleProduct): string => {
-  // Trust explicit boolean when the API provides it.
-  if (typeof (product as any)?.in_stock === 'boolean' && (product as any).in_stock) return 'In Stock';
-
-  const mainStock = Number((product as any)?.stock_quantity || 0);
+  const mainStock = Number(product.stock_quantity || 0);
   if (mainStock > 0) return 'In Stock';
 
   const allVariants = getVariantListForCard(product);
   const hasOtherStock = allVariants.some((variant) => {
     if (variant.id && product.id && variant.id === product.id) return false;
-    if (typeof (variant as any)?.in_stock === 'boolean' && (variant as any).in_stock) return true;
-    return Number((variant as any)?.stock_quantity || 0) > 0;
+    return Number(variant.stock_quantity || 0) > 0;
   });
 
   if (hasOtherStock) return 'Available in other variants';
