@@ -17,35 +17,6 @@ interface FeaturedProductsProps {
 }
 
 
-// Some list endpoints return multiple rows with the same SKU but only one carries images.
-// For homepage UX, reuse the first available image-set across same-SKU siblings.
-const propagateImagesAcrossListBySku = (list: SimpleProduct[]): SimpleProduct[] => {
-  const skuToImages = new Map<string, any[]>();
-
-  for (const p of list) {
-    const sku = String((p as any)?.sku || '').trim();
-    const imgs = (p as any)?.images;
-    if (!sku) continue;
-    if (!skuToImages.has(sku) && Array.isArray(imgs) && imgs.length > 0) {
-      skuToImages.set(sku, imgs);
-    }
-  }
-
-  if (skuToImages.size === 0) return list;
-
-  return list.map((p) => {
-    const sku = String((p as any)?.sku || '').trim();
-    if (!sku) return p;
-    const shared = skuToImages.get(sku);
-    const imgs = (p as any)?.images;
-    if (shared && (!Array.isArray(imgs) || imgs.length === 0)) {
-      return { ...(p as any), images: shared } as SimpleProduct;
-    }
-    return p;
-  });
-};
-
-
 const pickSharedImages = (items: SimpleProduct[]): SimpleProduct['images'] => {
   for (const p of items) {
     const imgs = (p as any)?.images;
@@ -118,9 +89,7 @@ const FeaturedProducts: React.FC<FeaturedProductsProps> = ({ categoryId, limit =
     setIsLoading(true);
     try {
       const featuredRawUnsorted = await catalogService.getFeaturedProducts(Math.max(limit * 5, 30));
-      const featuredRaw = propagateImagesAcrossListBySku(
-        [...featuredRawUnsorted].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0))
-      );
+      const featuredRaw = [...featuredRawUnsorted].sort((a, b) => Number(b?.id || 0) - Number(a?.id || 0));
 
       const filteredByCategory = categoryId
         ? featuredRaw.filter((p) => (typeof p.category === 'object' && p.category ? Number(p.category.id) === Number(categoryId) : false))

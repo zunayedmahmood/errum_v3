@@ -34,7 +34,6 @@ export interface Product {
   has_variants?: boolean;
   total_variants?: number;
   variants?: Product[];
-  description?: string;
   sku: string;
   slug?: string;
   description: string;
@@ -458,7 +457,22 @@ const normalizeProduct = (
   const explicitInStock = raw?.in_stock;
   const inStock = typeof explicitInStock === 'boolean' ? explicitInStock : stockQty > 0;
 
-  const images = normalizeImages(raw?.images || raw?.product_images || raw?.media || []);
+  // Pull images from the root product first.
+  // If the root has no images but the API nested images inside variants[],
+  // find the first variant that has images and use those as the fallback.
+  // This is the canonical fix for list endpoints that return:
+  //   { images: [], variants: [ { images: [] }, { images: [{...}] } ] }
+  const rawImages = raw?.images || raw?.product_images || raw?.media || [];
+  const rawVariants: any[] = Array.isArray(raw?.variants) ? raw.variants : [];
+  const fallbackRawImages =
+    (!Array.isArray(rawImages) || rawImages.length === 0) && rawVariants.length > 0
+      ? (
+          rawVariants.find((v: any) => Array.isArray(v?.images) && v.images.some((img: any) => img?.is_primary))?.images ||
+          rawVariants.find((v: any) => Array.isArray(v?.images) && v.images.length > 0)?.images ||
+          []
+        )
+      : [];
+  const images = normalizeImages(rawImages.length > 0 ? rawImages : fallbackRawImages);
 
   return {
     id: toNumber(raw?.id, 0),

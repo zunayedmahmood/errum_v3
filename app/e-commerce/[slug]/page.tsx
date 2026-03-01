@@ -117,76 +117,12 @@ const getPageSizeFromResponse = (response: Awaited<ReturnType<typeof catalogServ
 
 
 const buildCardProductsFromFlatCatalog = (rawProducts: (Product | SimpleProduct)[]): SimpleProduct[] => {
-  /**
-   * If ANY sibling variant has images, reuse that set for the representative + other variants
-   * that have empty images. This matches product detail page behavior.
-   */
-  const pickSharedImages = (items: Array<Product | SimpleProduct>): any[] => {
-    for (const it of items) {
-      const imgs = (it as any)?.images;
-      if (Array.isArray(imgs) && imgs.length > 0) return imgs;
-    }
-    return [];
-  };
-
-  const applySharedImages = (
-    main: SimpleProduct,
-    variants: SimpleProduct[]
-  ): { main: SimpleProduct; variants: SimpleProduct[] } => {
-    const shared = pickSharedImages([main, ...variants]);
-    if (!shared.length) return { main, variants };
-
-    const fixedMain =
-      (!Array.isArray((main as any).images) || (main as any).images.length === 0)
-        ? ({ ...(main as any), images: shared } as SimpleProduct)
-        : main;
-
-    const fixedVariants = variants.map((v) => {
-      const vImgs = (v as any)?.images;
-      return Array.isArray(vImgs) && vImgs.length > 0
-        ? v
-        : ({ ...(v as any), images: shared } as SimpleProduct);
-    });
-
-    return { main: fixedMain, variants: fixedVariants };
-  };
-
-  /**
-   * Listing pages sometimes contain multiple records for the same SKU and only one has images.
-   * Copy images across cards with matching SKU (safety net).
-   */
-  const propagateImagesAcrossCardsBySku = (cards: SimpleProduct[]): SimpleProduct[] => {
-    const skuToImages = new Map<string, any[]>();
-
-    for (const p of cards) {
-      const sku = String((p as any)?.sku || '').trim();
-      const imgs = (p as any)?.images;
-      if (!sku) continue;
-      if (!skuToImages.has(sku) && Array.isArray(imgs) && imgs.length > 0) {
-        skuToImages.set(sku, imgs);
-      }
-    }
-
-    if (skuToImages.size === 0) return cards;
-
-    return cards.map((p) => {
-      const sku = String((p as any)?.sku || '').trim();
-      if (!sku) return p;
-      const shared = skuToImages.get(sku);
-      const imgs = (p as any)?.images;
-      if (shared && (!Array.isArray(imgs) || imgs.length === 0)) {
-        return { ...(p as any), images: shared } as SimpleProduct;
-      }
-      return p;
-    });
-  };
-
   const grouped = groupProductsByMother(rawProducts as any[], {
     useCategoryInKey: true,
     preferSkuGrouping: true,
   });
 
-  const cards = grouped.map((group) => {
+  return grouped.map((group) => {
     const rawVariants = (group.variants || [])
       .map((variant) => variant.raw)
       .filter(Boolean) as SimpleProduct[];
@@ -199,10 +135,25 @@ const buildCardProductsFromFlatCatalog = (rawProducts: (Product | SimpleProduct)
     });
 
     const all = Array.from(uniqueVariants.values());
+
+    // Propagate images: find whichever variant has images and copy to all others
+    const fallbackImages =
+      all.find((v) => (v as any).images?.some((img: any) => img?.is_primary))?.images ||
+      all.find((v) => Array.isArray((v as any).images) && (v as any).images.length > 0)?.images ||
+      [];
+    const allWithImages = fallbackImages.length
+      ? all.map((v) =>
+          Array.isArray((v as any).images) && (v as any).images.length > 0
+            ? v
+            : { ...(v as any), images: fallbackImages }
+        )
+      : all;
+
     const representative =
+      (allWithImages.find((v) => Number(v.id) === Number((group.representative as any)?.id)) as SimpleProduct) ||
       (group.representative as SimpleProduct) ||
-      all.find((variant) => Number(variant.stock_quantity || 0) > 0) ||
-      all[0];
+      allWithImages.find((variant) => Number(variant.stock_quantity || 0) > 0) ||
+      allWithImages[0];
 
     if (!representative) {
       return {
@@ -222,28 +173,20 @@ const buildCardProductsFromFlatCatalog = (rawProducts: (Product | SimpleProduct)
       } as SimpleProduct;
     }
 
-    // ✅ Ensure images are shared across the whole variant group
-    const { main: fixedMain, variants: fixedVariants } = applySharedImages(
-      representative as SimpleProduct,
-      all
-    );
-
-    const variantsWithoutMain = fixedVariants.filter(
-      (variant) => Number(variant.id) !== Number(fixedMain.id)
+    const variantsWithoutRepresentative = allWithImages.filter(
+      (variant) => Number(variant.id) !== Number(representative.id)
     );
 
     return {
-      ...fixedMain,
+      ...representative,
       name: group.baseName || (representative as any).base_name || representative.name,
       display_name: group.baseName || (representative as any).display_name || (representative as any).base_name || representative.name,
       base_name: group.baseName || (representative as any).base_name || representative.name,
       has_variants: all.length > 1,
       total_variants: all.length,
-      variants: variantsWithoutMain,
+      variants: variantsWithoutRepresentative,
     } as SimpleProduct;
   });
-
-  return propagateImagesAcrossCardsBySku(cards);
 };
 
 export default function CategoryPage() {
