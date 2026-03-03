@@ -176,10 +176,10 @@ export default function SearchClient({ initialQuery = '' }: { initialQuery?: str
         {/* ── Results ── */}
         {!loading && !error && results.length > 0 && (
           <>
-            <p className="mb-5 text-sm text-neutral-500">
+            {/* <p className="mb-5 text-sm text-neutral-500">
               <span className="font-semibold text-neutral-900">{total.toLocaleString()}</span> result{total !== 1 ? 's' : ''} for{' '}
               <span className="font-semibold text-neutral-900">"{initialQuery || query}"</span>
-            </p>
+            </p> */}
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
               {results.map(product => {
