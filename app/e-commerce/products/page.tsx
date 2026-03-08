@@ -23,7 +23,7 @@ type ProductSort = NonNullable<GetProductsParams['sort_by']>;
 
 type FlatCategory = CatalogCategory & { depth: number };
 
-const PRODUCTS_PER_PAGE = 20;
+const PRODUCTS_PER_PAGE = 100;
 const BACKEND_BATCH_SIZE = 100;
 
 const normalize = (value: unknown) => String(value ?? '').trim().toLowerCase();
