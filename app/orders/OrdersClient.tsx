@@ -315,7 +315,9 @@ export default function OrdersDashboard() {
   const pathaoInFlightRef = useRef<Set<string>>(new Set());
 
   const [search, setSearch] = useState('');
-  const [dateFilter, setDateFilter] = useState(getTodayFilterValue());
+  const [dateFilter, setDateFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // ✅ NEW: Order type filter (All / Social / E-Com)
   const [orderTypeFilter, setOrderTypeFilter] = useState('All Types');
@@ -354,12 +356,12 @@ export default function OrdersDashboard() {
     didInitQuickDefaultsRef.current = true;
 
     if (initialViewMode === 'online') {
-      setOrderStatusFilter('pending');
+      setOrderStatusFilter('All Order Status');
     } else {
       setOrderStatusFilter('All Order Status');
     }
 
-    setCourierFilter('pathao');
+    setCourierFilter('All Couriers');
   }, [initialViewMode]);
 
 
@@ -963,7 +965,13 @@ export default function OrdersDashboard() {
 
       intendedCourier: order.intended_courier ?? order.intendedCourier ?? null,
 
-      isInstallment: Boolean(order.is_installment || order.is_installment_payment || order.installment_info || order.installment_plan),
+      isInstallment: !!(
+        order.is_installment === true || 
+        order.is_installment === 1 || 
+        order.is_installment_payment === true || 
+        order.is_installment_payment === 1 ||
+        (order.installment_info && typeof order.installment_info === 'object' && Object.keys(order.installment_info).length > 0)
+      ),
       installmentInfo: (order.installment_info ?? order.installment_plan ?? null),
 
       salesBy: order.salesman?.name || userName || 'N/A',
@@ -1240,6 +1248,18 @@ export default function OrdersDashboard() {
         }
         return orderDate === filterDateFormatted;
       });
+    } else if (startDate.trim() || endDate.trim()) {
+      const start = startDate.trim() ? new Date(startDate.trim()) : null;
+      const end = endDate.trim() ? new Date(endDate.trim() + "T23:59:59") : null;
+      
+      filtered = filtered.filter((o) => {
+        const oDateStr = o.orderDateRaw || o.createdAt;
+        if (!oDateStr) return false;
+        const oTime = new Date(oDateStr).getTime();
+        if (start && oTime < start.getTime()) return false;
+        if (end && oTime > end.getTime()) return false;
+        return true;
+      });
     }
 
     // ✅ NEW: order type filter
@@ -1265,7 +1285,7 @@ export default function OrdersDashboard() {
     }
 
     setFilteredOrders(filtered);
-  }, [search, dateFilter, orderTypeFilter, orderStatusFilter, paymentStatusFilter, courierFilter, orders]);
+  }, [search, dateFilter, startDate, endDate, orderTypeFilter, orderStatusFilter, paymentStatusFilter, courierFilter, orders]);
 
   // 🧾 Bulk lookup Pathao status for displayed orders
   const filteredOrderNumbers = useMemo(() => {
@@ -3201,8 +3221,37 @@ export default function OrdersDashboard() {
                       <input
                         type="date"
                         value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
+                        onChange={(e) => {
+                          setDateFilter(e.target.value);
+                          if (e.target.value) {
+                            setStartDate('');
+                            setEndDate('');
+                          }
+                        }}
+                        disabled={!!startDate || !!endDate}
+                        className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-opacity ${!!startDate || !!endDate ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-500 uppercase mb-1.5 ml-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        disabled={!!dateFilter}
+                        className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-opacity ${!!dateFilter ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-500 uppercase mb-1.5 ml-1">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        disabled={!!dateFilter}
+                        className={`w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-opacity ${!!dateFilter ? 'opacity-40 cursor-not-allowed' : ''}`}
                       />
                     </div>
 
@@ -3244,61 +3293,65 @@ export default function OrdersDashboard() {
                 )}
 
                 {/* Active Filter Pills */}
-                {(search || dateFilter || orderTypeFilter !== 'All Types' || orderStatusFilter !== (viewMode === 'online' ? 'pending' : 'All Order Status') || paymentStatusFilter !== 'All Payment Status' || courierFilter !== 'All Couriers') && (
+                {(search || dateFilter || startDate || endDate || orderTypeFilter !== 'All Types' || orderStatusFilter !== (viewMode === 'online' ? 'All Order Status' : 'All Order Status') || paymentStatusFilter !== 'All Payment Status' || courierFilter !== 'All Couriers') && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase mr-1">Active:</span>
 
                     {search && (
-                      <button onClick={() => setSearch('')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Query: {search} <X className="w-2.5 h-2.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-full text-black dark:text-white animate-in zoom-in-95 duration-200">
+                        Search: {search} <X className="w-2.5 h-2.5 cursor-pointer hover:text-red-500" onClick={() => setSearch('')} />
+                      </div>
                     )}
-
                     {dateFilter && (
-                      <button onClick={() => setDateFilter('')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Date: {dateFilter} <X className="w-2.5 h-2.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Date: {dateFilter} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => setDateFilter('')} />
+                      </div>
+                    )}
+                    {(startDate || endDate) && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Range: {startDate || '...'} to {endDate || '...'} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => { setStartDate(''); setEndDate(''); }} />
+                      </div>
                     )}
 
-                    {orderStatusFilter !== (viewMode === 'online' ? 'pending' : 'All Order Status') && (
-                      <button onClick={() => setOrderStatusFilter(viewMode === 'online' ? 'pending' : 'All Order Status')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Status: {statusLabel(orderStatusFilter)} <X className="w-2.5 h-2.5" />
-                      </button>
+                    {orderStatusFilter !== 'All Order Status' && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Status: {statusLabel(orderStatusFilter)} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => setOrderStatusFilter('All Order Status')} />
+                      </div>
                     )}
 
                     {paymentStatusFilter !== 'All Payment Status' && (
-                      <button onClick={() => setPaymentStatusFilter('All Payment Status')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Payment: {statusLabel(paymentStatusFilter)} <X className="w-2.5 h-2.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Payment: {statusLabel(paymentStatusFilter)} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => setPaymentStatusFilter('All Payment Status')} />
+                      </div>
                     )}
 
                     {orderTypeFilter !== 'All Types' && (
-                      <button onClick={() => setOrderTypeFilter('All Types')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Type: {titleCase(orderTypeFilter)} <X className="w-2.5 h-2.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Type: {titleCase(orderTypeFilter)} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => setOrderTypeFilter('All Types')} />
+                      </div>
                     )}
 
                     {courierFilter !== 'All Couriers' && (
-                      <button onClick={() => setCourierFilter('All Couriers')} className="flex items-center gap-1.5 px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-[10px] font-medium transition-colors">
-                        Marker: {courierLabel(courierFilter)} <X className="w-2.5 h-2.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-medium bg-black text-white dark:bg-white dark:text-black rounded-full animate-in zoom-in-95 duration-200">
+                        Marker: {courierLabel(courierFilter)} <X className="w-2.5 h-2.5 cursor-pointer" onClick={() => setCourierFilter('All Couriers')} />
+                      </div>
                     )}
 
-                    {(search || dateFilter || orderTypeFilter !== 'All Types' || orderStatusFilter !== (viewMode === 'online' ? 'pending' : 'All Order Status') || paymentStatusFilter !== 'All Payment Status' || courierFilter !== 'All Couriers') && (
-                      <button
-                        onClick={() => {
-                          setSearch('');
-                          setDateFilter('');
-                          setOrderTypeFilter('All Types');
-                          setOrderStatusFilter(viewMode === 'online' ? 'pending' : 'All Order Status');
-                          setPaymentStatusFilter('All Payment Status');
-                          setCourierFilter('All Couriers');
-                        }}
-                        className="text-[10px] font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 ml-1"
-                      >
-                        Clear All
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setSearch('');
+                        setDateFilter('');
+                        setStartDate('');
+                        setEndDate('');
+                        setOrderTypeFilter('All Types');
+                        setOrderStatusFilter('All Order Status');
+                        setPaymentStatusFilter('All Payment Status');
+                        setCourierFilter('All Couriers');
+                      }}
+                      className="text-[10px] font-bold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 ml-1 transition-colors"
+                    >
+                      Clear All
+                    </button>
                   </div>
                 )}
               </div>

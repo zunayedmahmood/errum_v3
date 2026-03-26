@@ -120,7 +120,6 @@ class EcommerceCatalogController extends Controller
                            ->orWhere('products.base_name',       'like', $like)
                            ->orWhere('products.sku',             'like', $like)
                            ->orWhere('products.variation_suffix','like', $like)
-                           ->orWhere('products.description',     'like', $like)
                            ->orWhereExists(function ($sub) use ($like) {
                                $sub->select(DB::raw(1))
                                    ->from('categories')
@@ -704,11 +703,11 @@ class EcommerceCatalogController extends Controller
                     $q->where('quantity', '>', 0);
                 })
                 ->where(function ($query) use ($searchQuery) {
-                    $this->whereAnyLike($query, ['name', 'description', 'sku'], $searchQuery);
+                    $this->whereAnyLike($query, ['name', 'sku'], $searchQuery);
                 });
 
             // Add relevance ordering
-            $this->searchWithRelevance($products, ['name', 'description', 'sku'], $searchQuery, 'name');
+            $this->searchWithRelevance($products, ['name', 'sku'], $searchQuery, 'name');
             
             $products = $products->paginate($perPage);
 

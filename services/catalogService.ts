@@ -1134,6 +1134,32 @@ const catalogService = {
     }
   },
 
+  async advancedSearch(params: any): Promise<SearchProductsResponse> {
+    try {
+      const response = await api.post('/products/advanced-search', params);
+      const payload = response?.data;
+      
+      const products = Array.isArray(payload.data?.data) 
+        ? payload.data.data.map((p: any) => normalizeProduct(p))
+        : [];
+        
+      const pagination = normalizePagination(payload.data, products.length);
+
+      return {
+        products,
+        grouped_products: buildGroupedProductsFromFlat(products),
+        pagination,
+        meta: {
+          query: params.query,
+          total_results: payload.total_results || pagination.total,
+        },
+      };
+    } catch (error) {
+      console.error('Advanced search failed:', error);
+      throw new Error('Failed to perform advanced search');
+    }
+  },
+
   async getFeaturedProducts(limit: number = 8): Promise<SimpleProduct[]> {
     try {
       const response = await api.get('/catalog/featured-products', {

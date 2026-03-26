@@ -64,7 +64,7 @@ export default function ProductPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const SERVER_PAGE_SIZE = 60;
-  const SEARCH_DEBOUNCE_MS = 350;
+  const SEARCH_DEBOUNCE_MS = 1000;
 
   // If permissions are not yet reliably resolved from the API (common when /me does not
   // include role.permissions), do NOT block the page. Backend will still enforce 403.

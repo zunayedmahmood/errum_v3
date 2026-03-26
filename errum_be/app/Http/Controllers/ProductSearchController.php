@@ -81,39 +81,30 @@ class ProductSearchController extends Controller
         'deshio' => 'দেশীও', 'deshiyo' => 'দেশীও',
         'production' => 'প্রোডাকশন', 'prodakshon' => 'প্রোডাকশন',
         
-        // Food Items (Original)
-        'bhat' => 'ভাত', 'bhaat' => 'ভাত', 'rice' => 'চাল',
-        'cha' => 'চা', 'chai' => 'চা', 'tea' => 'চা',
-        'dal' => 'ডাল', 'daal' => 'ডাল', 'lentil' => 'ডাল',
-        'mach' => 'মাছ', 'fish' => 'মাছ',
-        'murgi' => 'মুরগি', 'chicken' => 'মুরগি',
-        'dim' => 'ডিম', 'egg' => 'ডিম',
-        'doodh' => 'দুধ', 'dudh' => 'দুধ', 'milk' => 'দুধ',
-        'roti' => 'রুটি', 'bread' => 'রুটি',
-        'aloo' => 'আলু', 'alu' => 'আলু', 'potato' => 'আলু',
-        'peyaj' => 'পেঁয়াজ', 'piaj' => 'পেঁয়াজ', 'onion' => 'পেঁয়াজ',
-        'rosun' => 'রসুন', 'garlic' => 'রসুন',
-        'ada' => 'আদা', 'ginger' => 'আদা',
-        'morich' => 'মরিচ', 'pepper' => 'মরিচ', 'chili' => 'মরিচ',
-        'nun' => 'নুন', 'salt' => 'নুন',
-        'chini' => 'চিনি', 'sugar' => 'চিনি',
-        'tel' => 'তেল', 'oil' => 'তেল',
-        'ghee' => 'ঘি',
-        'doi' => 'দই', 'yogurt' => 'দই',
-        'panir' => 'পনির', 'cheese' => 'পনির',
-        'mangsho' => 'মাংস', 'mangso' => 'মাংস', 'meat' => 'মাংস',
-        'shobji' => 'সবজি', 'vegetable' => 'সবজি',
-        'fol' => 'ফল', 'fruit' => 'ফল',
-        'pani' => 'পানি', 'water' => 'পানি',
-        'biscuit' => 'বিস্কুট', 'biskut' => 'বিস্কুট',
-        'chocolate' => 'চকলেট', 'chokolate' => 'চকলেট',
-        'chips' => 'চিপস',
-        'noodles' => 'নুডলস',
-        'juice' => 'জুস',
-        'soap' => 'সাবান', 'sabun' => 'সাবান',
-        'shampoo' => 'শ্যাম্পু',
-        'toothpaste' => 'টুথপেস্ট',
-        'brush' => 'ব্রাশ',
+        // Fashion & Lifestyle Terms
+        'sneakers' => 'স্নিকার্স', 'sneaker' => 'স্নিকার',
+        'shoes' => 'জুতো', 'shoe' => 'জুতা',
+        'slides' => 'স্লাইডস', 'slide' => 'স্লাইড',
+        'sandals' => 'স্যান্ডেল', 'sandal' => 'স্যান্ডেল',
+        'panjabi' => 'পাঞ্জাবি', 'punjabi' => 'পাঞ্জাবি',
+        'thobes' => 'থোব', 'thobe' => 'থোব', 'jubba' => 'জুব্বা',
+        'thob' => 'থোব',
+        'sunglasses' => 'সানগ্লাস', 'sunglass' => 'সানগ্লাস', 'choshma' => 'চশমা',
+        'jersey' => 'জার্সি', 'jersi' => 'জার্সি',
+        'tshirt' => 'টি-শার্ট', 't-shirt' => 'টি-শার্ট',
+        'polo' => 'পোলো',
+        'watch' => 'ঘড়ি', 'ghori' => 'ঘড়ি',
+        'wallet' => 'ওয়ালেট', 'manibag' => 'মানিব্যাগ',
+        'belt' => 'বেল্ট',
+        'perfume' => 'পারফিউম', 'ator' => 'আতর',
+        
+        // General Terms
+        'piece' => 'পিস', 'pis' => 'পিস',
+        'set' => 'সেট', 'sett' => 'সেট',
+        'exclusive' => 'এক্সক্লুসিভ', 'exlusive' => 'এক্সক্লুসিভ',
+        'offer' => 'অফার', 'ofar' => 'অফার',
+        'premium' => 'প্রিমিয়াম', 'primiam' => 'প্রিমিয়াম',
+        'original' => 'অরিজিনাল', 'orijinal' => 'অরিজিনাল',
     ];
     
     // Product-specific keyword aliases for better matching
@@ -259,19 +250,20 @@ class ProductSearchController extends Controller
             'enable_fuzzy' => 'nullable|boolean',
             'fuzzy_threshold' => 'nullable|integer|min:50|max:100',
             'search_fields' => 'nullable|array',
-            'search_fields.*' => 'in:name,sku,description,category,custom_fields',
+            'search_fields.*' => 'in:name,sku,category,custom_fields',
             'per_page' => 'nullable|integer|min:1|max:100',
             'stock_status' => 'nullable|string',
             'in_stock' => 'nullable|string',
-        ]);
-
-        // Normalize stock status from both possible parameters
+            'group_by_sku' => 'nullable|boolean',
+            'min_price' => 'nullable|numeric|min:0',
+            'max_price' => 'nullable|numeric|min:0',
+        ]);// Normalize stock status from both possible parameters
         $validated['stock_status'] = $validated['stock_status'] ?? $request->input('in_stock') ?? 'all';
 
         $query = $validated['query'];
         $enableFuzzy = $validated['enable_fuzzy'] ?? true;
         $fuzzyThreshold = $validated['fuzzy_threshold'] ?? $this->similarityThreshold;
-        $searchFields = $validated['search_fields'] ?? ['name', 'sku', 'description', 'category', 'custom_fields'];
+        $searchFields = $validated['search_fields'] ?? ['name', 'sku', 'category', 'custom_fields'];
 
         // Step 1: Normalize and prepare search terms
         $searchTerms = $this->prepareSearchTerms($query);
@@ -560,25 +552,18 @@ class ProductSearchController extends Controller
             foreach ($searchTerms as $term) {
                 // Check name fuzzy match
                 if (in_array('name', $searchFields)) {
-                    $nameScore = $this->calculateFuzzyScore($term, $product->name);
+                    $nameScore = $this->calculateSimilarity($term, $product->name);
                     $matchScore = max($matchScore, $nameScore);
                 }
-                
                 // Check SKU fuzzy match
                 if (in_array('sku', $searchFields)) {
-                    $skuScore = $this->calculateFuzzyScore($term, $product->sku);
+                    $skuScore = $this->calculateSimilarity($term, $product->sku);
                     $matchScore = max($matchScore, $skuScore);
-                }
-                
-                // Check description fuzzy match
-                if (in_array('description', $searchFields) && $product->description) {
-                    $descScore = $this->calculateFuzzyScore($term, $product->description);
-                    $matchScore = max($matchScore, $descScore * 0.7); // Lower weight for description
                 }
                 
                 // Check category fuzzy match
                 if (in_array('category', $searchFields) && $product->category) {
-                    $categoryScore = $this->calculateFuzzyScore($term, $product->category->title);
+                    $categoryScore = $this->calculateSimilarity($term, $product->category->title);
                     $matchScore = max($matchScore, $categoryScore * 0.8);
                 }
             }
@@ -594,9 +579,52 @@ class ProductSearchController extends Controller
     }
 
     /**
-     * Calculate fuzzy matching score between two strings
+     * Apply common filters to a query
      */
-    private function calculateFuzzyScore($needle, $haystack)
+    private function applyFilters($query, $filters)
+    {
+        $query->where('is_archived', $filters['is_archived'] ?? false);
+        
+        if (isset($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+        
+        if (isset($filters['vendor_id'])) {
+            $query->where('vendor_id', $filters['vendor_id']);
+        }
+
+        if (isset($filters['min_price'])) {
+            $query->where('selling_price', '>=', $filters['min_price']);
+        }
+
+        if (isset($filters['max_price'])) {
+            $query->where('selling_price', '<=', $filters['max_price']);
+        }
+
+        // Stock status filter
+        if (isset($filters['stock_status']) && $filters['stock_status'] !== 'all') {
+            if ($filters['stock_status'] === 'in_stock') {
+                $query->whereHas('batches', function($q) {
+                    $q->where('is_active', true)
+                      ->where('availability', true)
+                      ->where('stock_qty', '>', 0);
+                });
+            } elseif ($filters['stock_status'] === 'not_in_stock') {
+                $query->whereDoesntHave('batches', function($q) {
+                    $q->where('is_active', true)
+                      ->where('availability', true)
+                      ->where('stock_qty', '>', 0);
+                });
+            }
+        }
+        
+        return $query;
+    }
+
+    /**
+     * Similar text percentage
+     */
+    private function calculateSimilarity($needle, $haystack)
     {
         if (empty($needle) || empty($haystack)) {
             return 0;
@@ -638,33 +666,9 @@ class ProductSearchController extends Controller
     {
         $query = Product::with(['category', 'vendor', 'productFields.field', 'images' => function($q) {
             $q->where('is_active', true)->orderBy('is_primary', 'desc')->orderBy('sort_order');
-        }])
-            ->where('is_archived', $filters['is_archived'] ?? false);
-        
-        if (isset($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
-        }
-        
-        if (isset($filters['vendor_id'])) {
-            $query->where('vendor_id', $filters['vendor_id']);
-        }
+        }]);
 
-        // Stock status filter
-        if (isset($filters['stock_status']) && $filters['stock_status'] !== 'all') {
-            if ($filters['stock_status'] === 'in_stock') {
-                $query->whereHas('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            } elseif ($filters['stock_status'] === 'not_in_stock') {
-                $query->whereDoesntHave('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            }
-        }
+        $this->applyFilters($query, $filters);
         
         $query->where(function($q) use ($searchTerms, $searchFields) {
             foreach ($searchTerms as $term) {
@@ -674,9 +678,6 @@ class ProductSearchController extends Controller
                     }
                     if (in_array('sku', $searchFields)) {
                         $subQ->orWhere('sku', '=', $term);
-                    }
-                    if (in_array('description', $searchFields)) {
-                        $subQ->orWhere('description', '=', $term);
                     }
                 });
             }
@@ -692,33 +693,9 @@ class ProductSearchController extends Controller
     {
         $query = Product::with(['category', 'vendor', 'productFields.field', 'images' => function($q) {
             $q->where('is_active', true)->orderBy('is_primary', 'desc')->orderBy('sort_order');
-        }])
-            ->where('is_archived', $filters['is_archived'] ?? false);
-        
-        if (isset($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
-        }
-        
-        if (isset($filters['vendor_id'])) {
-            $query->where('vendor_id', $filters['vendor_id']);
-        }
+        }]);
 
-        // Stock status filter
-        if (isset($filters['stock_status']) && $filters['stock_status'] !== 'all') {
-            if ($filters['stock_status'] === 'in_stock') {
-                $query->whereHas('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            } elseif ($filters['stock_status'] === 'not_in_stock') {
-                $query->whereDoesntHave('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            }
-        }
+        $this->applyFilters($query, $filters);
         
         $query->where(function($q) use ($searchTerms, $searchFields) {
             foreach ($searchTerms as $term) {
@@ -728,9 +705,6 @@ class ProductSearchController extends Controller
                     }
                     if (in_array('sku', $searchFields)) {
                         $this->orWhereLike($subQ, 'sku', $term, 'start');
-                    }
-                    if (in_array('description', $searchFields)) {
-                        $this->orWhereLike($subQ, 'description', $term, 'start');
                     }
                 });
             }
@@ -746,33 +720,9 @@ class ProductSearchController extends Controller
     {
         $query = Product::with(['category', 'vendor', 'productFields.field', 'images' => function($q) {
             $q->where('is_active', true)->orderBy('is_primary', 'desc')->orderBy('sort_order');
-        }])
-            ->where('is_archived', $filters['is_archived'] ?? false);
-        
-        if (isset($filters['category_id'])) {
-            $query->where('category_id', $filters['category_id']);
-        }
-        
-        if (isset($filters['vendor_id'])) {
-            $query->where('vendor_id', $filters['vendor_id']);
-        }
+        }]);
 
-        // Stock status filter
-        if (isset($filters['stock_status']) && $filters['stock_status'] !== 'all') {
-            if ($filters['stock_status'] === 'in_stock') {
-                $query->whereHas('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            } elseif ($filters['stock_status'] === 'not_in_stock') {
-                $query->whereDoesntHave('batches', function($q) {
-                    $q->where('is_active', true)
-                      ->where('availability', true)
-                      ->where('stock_qty', '>', 0);
-                });
-            }
-        }
+        $this->applyFilters($query, $filters);
         
         $query->where(function($q) use ($searchTerms, $searchFields) {
             foreach ($searchTerms as $term) {
@@ -782,9 +732,6 @@ class ProductSearchController extends Controller
                     }
                     if (in_array('sku', $searchFields)) {
                         $this->orWhereLike($subQ, 'sku', $term);
-                    }
-                    if (in_array('description', $searchFields)) {
-                        $this->orWhereLike($subQ, 'description', $term);
                     }
                     if (in_array('category', $searchFields)) {
                         $subQ->orWhereHas('category', function($catQ) use ($term) {
@@ -847,7 +794,25 @@ class ProductSearchController extends Controller
 
                 // Category match
                 if ($product->category && strpos(mb_strtolower($product->category->title, 'UTF-8'), $termLower) !== false) {
-                    $score += (10 * $weight);
+                    $score += (20 * $weight);
+                }
+
+                // Color/Size match (via custom fields)
+                if ($product->productFields) {
+                    foreach ($product->productFields as $pf) {
+                        $fieldTitle = mb_strtolower($pf->field->title ?? '', 'UTF-8');
+                        $valLower = mb_strtolower($pf->value ?? '', 'UTF-8');
+                        
+                        // Color boost
+                        if (in_array($fieldTitle, ['color', 'colour']) && strpos($valLower, $termLower) !== false) {
+                            $score += (15 * $weight);
+                        }
+                        
+                        // Size boost
+                        if ($fieldTitle === 'size' && $valLower === $termLower) {
+                            $score += (10 * $weight);
+                        }
+                    }
                 }
             }
             

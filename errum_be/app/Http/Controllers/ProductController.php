@@ -51,7 +51,7 @@ class ProductController extends Controller
                     if (empty($term)) continue;
                     
                     $q->where(function ($subQ) use ($term) {
-                        $this->whereAnyLike($subQ, ['name', 'sku', 'description'], $term);
+                        $this->whereAnyLike($subQ, ['name', 'sku'], $term);
                     });
                 }
             });

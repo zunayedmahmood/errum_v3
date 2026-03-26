@@ -62,6 +62,7 @@ class Order extends Model
 
     protected $casts = [
         'is_preorder' => 'boolean',
+        'is_installment_payment' => 'boolean',
         'stock_available_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',

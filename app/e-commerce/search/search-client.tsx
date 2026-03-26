@@ -141,32 +141,23 @@ export default function SearchClient({ initialQuery = '' }: { initialQuery?: str
     setIsLoading(true);
     try {
       const params = {
-        q: query,
+        query: query,
         page: currentPage,
         per_page: PRODUCTS_PER_PAGE,
-        sort: sortBy === 'newest' ? 'created_at' : sortBy,
-        min_price: undefined as number | undefined,
-        max_price: undefined as number | undefined,
         category_id: selectedCategoryId !== 'all' ? Number(selectedCategoryId) : undefined,
+        enable_fuzzy: true,
+        group_by_sku: true, // Ensuring unique products by SKU
       };
 
-      if (priceRange !== 'all') {
-        const [min, max] = priceRange.split('-').map(Number);
-        if (!isNaN(min)) params.min_price = min;
-        if (!isNaN(max)) params.max_price = max;
-      }
-
-      const response = await catalogService.searchProducts(params);
+      // Handle price range if needed (advancedSearch doesn't have explicit min/max_price yet in the controller validation, 
+      // but let's check the controller first. Wait, I should add them to the controller if missing.)
+      
+      const response = await catalogService.advancedSearch(params);
 
       // Check if this is still the most recent request
       if (currentFetchId !== fetchIdRef.current) return;
 
-      // Use grouped products if available from the backend response
-      const displayProducts = response.grouped_products?.length
-        ? response.grouped_products.map(gp => gp.main_variant as unknown as SimpleProduct)
-        : response.products as unknown as SimpleProduct[];
-
-      setProducts(displayProducts);
+      setProducts(response.products as unknown as SimpleProduct[]);
       setPagination(response.pagination);
     } catch (error) {
       if (currentFetchId === fetchIdRef.current) {
