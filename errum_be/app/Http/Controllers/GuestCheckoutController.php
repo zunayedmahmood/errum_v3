@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\OrderPayment;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\ReservedProduct;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -92,10 +93,9 @@ class GuestCheckoutController extends Controller
                         ->orderBy('created_at', 'desc')
                         ->first();
                     
-                    // Calculate total available stock for this product
-                    $totalAvailableStock = ProductBatch::where('product_id', $product->id)
-                        ->where('quantity', '>', 0)
-                        ->sum('quantity');
+                    // Query ReservedProduct table for available inventory and lock for update
+                    $reservedRecord = ReservedProduct::where('product_id', $product->id)->lockForUpdate()->first();
+                    $totalAvailableStock = $reservedRecord ? $reservedRecord->available_inventory : 0;
                     
                     // IMPORTANT: Guest checkout (eCommerce) MUST have stock available
                     // Reject if insufficient stock
@@ -226,22 +226,18 @@ class GuestCheckoutController extends Controller
                         'total_amount' => $itemData['total_amount'],
                     ]);
 
-                    // Deduct stock immediately (FIFO - First In, First Out)
-                    // Requirement: "jokhon ee order entry hobe shathe shathe stock hold/minus hobe"
-                    $remainingQty = $itemData['quantity'];
-                    $batches = ProductBatch::where('product_id', $itemData['product_id'])
-                        ->where('quantity', '>', 0)
-                        ->orderBy('created_at', 'asc') // FIFO
-                        ->get();
-                    
-                    foreach ($batches as $batch) {
-                        if ($remainingQty <= 0) break;
-                        
-                        $deductQty = min($batch->quantity, $remainingQty);
-                        $batch->quantity -= $deductQty;
-                        $batch->save();
-                        
-                        $remainingQty -= $deductQty;
+                    // Increment reserved_inventory instead of deducting stock
+                    if ($reservedRecord = ReservedProduct::where('product_id', $itemData['product_id'])->first()) {
+                        $reservedRecord->increment('reserved_inventory', $itemData['quantity']);
+                        $reservedRecord->decrement('available_inventory', $itemData['quantity']);
+                    } else {
+                        // Fallback but should not happen since validation requires stock
+                        ReservedProduct::create([
+                            'product_id' => $itemData['product_id'],
+                            'total_inventory' => 0,
+                            'reserved_inventory' => $itemData['quantity'],
+                            'available_inventory' => -$itemData['quantity'],
+                        ]);
                     }
                 }
 

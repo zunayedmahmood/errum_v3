@@ -43,7 +43,7 @@ interface ProductVariant {
   option_label?: string;
   selling_price: number | null; // ✅ allow null safely
   in_stock: boolean;
-  stock_quantity: number | null; // ✅ allow null safely
+  stock_quantity: number | null; // ✅ mapped to available_inventory
   images: ProductImage[] | null; // ✅ allow null safely
 }
 
@@ -416,8 +416,8 @@ export default function ProductDetailPage() {
             in_stock:
               typeof variant?.in_stock === 'boolean'
                 ? variant.in_stock
-                : Number(variant?.stock_quantity || 0) > 0,
-            stock_quantity: Number(variant?.stock_quantity || 0),
+                : Number(variant?.available_inventory ?? (variant?.stock_quantity || 0)) > 0,
+            stock_quantity: Number(variant?.available_inventory ?? (variant?.stock_quantity || 0)),
             images: Array.isArray(variant?.images) ? variant.images : [],
           };
         };
@@ -515,7 +515,7 @@ export default function ProductDetailPage() {
               option_label: meta.optionLabel,
               selling_price: variant.price ?? raw.selling_price ?? null,
               in_stock: !!variant.in_stock,
-              stock_quantity: variant.stock_quantity ?? raw.stock_quantity ?? 0,
+              stock_quantity: (variant as any).available_inventory ?? raw.available_inventory ?? variant.stock_quantity ?? raw.stock_quantity ?? 0,
               images: raw.images ?? [],
             } as ProductVariant;
           })
@@ -542,7 +542,7 @@ export default function ProductDetailPage() {
             option_label: selfMeta.optionLabel,
             selling_price: (mainProduct as any).selling_price ?? null,
             in_stock: !!(mainProduct as any).in_stock,
-            stock_quantity: (mainProduct as any).stock_quantity ?? 0,
+            stock_quantity: (mainProduct as any).available_inventory ?? (mainProduct as any).stock_quantity ?? 0,
             images: (mainProduct as any).images ?? [],
           };
 

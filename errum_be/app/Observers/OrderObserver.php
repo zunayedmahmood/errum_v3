@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Models\Order;
+use App\Models\ReservedProduct;
 use App\Services\AdAttributionService;
 use App\Jobs\ComputeAdAttributionJob;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,21 @@ class OrderObserver
             // Define countable statuses (based on actual system status values)
             // System statuses: pending, confirmed, processing, ready_for_pickup, shipped, delivered, cancelled, refunded
             $countableStatuses = ['confirmed', 'processing', 'shipped', 'delivered'];
+            
+            // Define reversal statuses
+            $reversalStatuses = ['cancelled', 'refunded'];
+            
+            // Handle inventory reservation release for unassigned orders
+            if ($oldStatus === 'pending_assignment' && in_array($newStatus, $reversalStatuses)) {
+                foreach ($order->items as $item) {
+                    if ($reservedRecord = ReservedProduct::where('product_id', $item->product_id)->first()) {
+                        $reservedRecord->decrement('reserved_inventory', $item->quantity);
+                        $reservedRecord->increment('available_inventory', $item->quantity);
+                    }
+                }
+                
+                Log::info("Released reserved inventory for cancelled order {$order->order_number}");
+            }
             
             // Define reversal statuses
             $reversalStatuses = ['cancelled', 'refunded'];

@@ -651,7 +651,7 @@ export default function CheckoutPage() {
 
     } catch (error: any) {
       console.error('❌ Order placement failed:', error);
-      setError(error.message || 'Failed to place order. Please try again.');
+      setError(error?.response?.data?.message || error.message || 'Failed to place order. Please try again.');
     } finally {
       setIsProcessing(false);
     }

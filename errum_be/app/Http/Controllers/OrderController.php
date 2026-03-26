@@ -11,9 +11,11 @@ use App\Models\Store;
 use App\Models\Employee;
 use App\Models\PaymentMethod;
 use App\Models\Transaction;
+use App\Models\ReservedProduct;
 use App\Traits\DatabaseAgnosticSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
@@ -431,8 +433,18 @@ class OrderController extends Controller
                 }
 
                 // Validate stock availability only if batch exists (not a pre-order)
-                if ($batch && $batch->quantity < $itemData['quantity']) {
-                    throw new \Exception("Insufficient stock for {$product->name}. Available: {$batch->quantity}");
+                if ($batch) {
+                    if ($batch->quantity < $itemData['quantity']) {
+                        throw new \Exception("Insufficient local stock for {$product->name}. Available: {$batch->quantity}");
+                    }
+                    
+                    // NEW LOGIC: Check global reservation table
+                    $reservedRecord = \App\Models\ReservedProduct::where('product_id', $product->id)->lockForUpdate()->first();
+                    $globalAvailable = $reservedRecord ? $reservedRecord->available_inventory : 0;
+                    
+                    if ($globalAvailable < $itemData['quantity']) {
+                        throw new \Exception("Cannot sell {$product->name} (Global available inventory: {$globalAvailable}). Stock is reserved for online orders.");
+                    }
                 }
 
                 // Validate batch belongs to the store (only if batch exists AND store_id is provided)
@@ -466,7 +478,7 @@ class OrderController extends Controller
                 }
                 
                 // Debug: Log barcode capture
-                \Log::info('Order item barcode capture', [
+                Log::info('Order item barcode capture', [
                     'barcode_value' => $itemData['barcode'] ?? 'NOT_PROVIDED',
                     'barcode_id' => $barcodeId,
                     'product_id' => $product->id,
@@ -491,7 +503,7 @@ class OrderController extends Controller
                 $cogs = $batch ? round(($batch->cost_price ?? 0) * $quantity, 2) : 0;
                 
                 // Log COGS during order creation for debugging
-                \Log::info('Order Item COGS at Creation', [
+                Log::info('Order Item COGS at Creation', [
                     'product_name' => $product->name,
                     'batch_id' => $batch?->id,
                     'batch_cost_price' => $batch?->cost_price,
@@ -532,12 +544,25 @@ class OrderController extends Controller
                     $batch->quantity -= $quantity;
                     $batch->save();
                     
-                    \Log::info('Stock deducted at order creation', [
+                    Log::info('Stock deducted at order creation', [
                         'order_type' => $request->order_type,
                         'product_id' => $product->id,
                         'batch_id' => $batch->id,
                         'quantity' => $quantity,
                     ]);
+                } else if ($batch) {
+                    // NEW: Reserve stock for online orders that are pending assignment
+                    if ($reservedRecord = \App\Models\ReservedProduct::where('product_id', $product->id)->first()) {
+                        $reservedRecord->increment('reserved_inventory', $quantity);
+                        $reservedRecord->decrement('available_inventory', $quantity);
+                    } else {
+                        \App\Models\ReservedProduct::create([
+                            'product_id' => $product->id,
+                            'total_inventory' => 0,
+                            'reserved_inventory' => $quantity,
+                            'available_inventory' => -$quantity,
+                        ]);
+                    }
                 }
             }
 
@@ -1271,7 +1296,7 @@ class OrderController extends Controller
                 $calculatedCogs = ($batch ? ($batch->cost_price ?? 0) * $item->quantity : 0);
                 
                 // Log COGS calculation for debugging
-                \Log::info('COGS Calculation', [
+                Log::info('COGS Calculation', [
                     'order_item_id' => $item->id,
                     'product_name' => $item->product_name,
                     'batch_id' => $batch ? $batch->id : null,
@@ -1308,13 +1333,13 @@ class OrderController extends Controller
                 $orderWithItems = $order->fresh(['items']);
                 Transaction::createFromOrderCOGS($orderWithItems);
                 $totalCogs = collect($orderWithItems->items)->sum('cogs');
-                \Log::info('COGS Transactions Created', [
+                Log::info('COGS Transactions Created', [
                     'order_id' => $order->id,
                     'order_number' => $order->order_number,
                     'total_cogs' => $totalCogs,
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Failed to create COGS transactions', [
+                Log::error('Failed to create COGS transactions', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString()

@@ -8,6 +8,7 @@ use App\Models\OrderPayment;
 use App\Models\Cart;
 use App\Models\Product;
 use App\Models\ProductBatch;
+use App\Models\ReservedProduct;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Traits\DatabaseAgnosticSearch;
@@ -219,9 +220,8 @@ class EcommerceOrderController extends Controller
                 // Validate stock availability for all cart items
                 $outOfStockItems = [];
                 foreach ($cartItems as $cartItem) {
-                    $availableStock = ProductBatch::where('product_id', $cartItem->product_id)
-                        ->where('quantity', '>', 0)
-                        ->sum('quantity');
+                    $reservedRecord = ReservedProduct::where('product_id', $cartItem->product_id)->lockForUpdate()->first();
+                    $availableStock = $reservedRecord ? $reservedRecord->available_inventory : 0;
                     
                     if ($availableStock < $cartItem->quantity) {
                         $outOfStockItems[] = [
@@ -324,22 +324,17 @@ class EcommerceOrderController extends Controller
                         'notes' => $cartItem->notes,
                     ]);
 
-                    // Deduct stock immediately (FIFO - First In, First Out)
-                    // Requirement: "jokhon ee order entry hobe shathe shathe stock hold/minus hobe"
-                    $remainingQty = $cartItem->quantity;
-                    $batches = ProductBatch::where('product_id', $cartItem->product_id)
-                        ->where('quantity', '>', 0)
-                        ->orderBy('created_at', 'asc') // FIFO
-                        ->get();
-                    
-                    foreach ($batches as $batch) {
-                        if ($remainingQty <= 0) break;
-                        
-                        $deductQty = min($batch->quantity, $remainingQty);
-                        $batch->quantity -= $deductQty;
-                        $batch->save();
-                        
-                        $remainingQty -= $deductQty;
+                    // Increment reserved_inventory instead of deducting stock
+                    if ($reservedRecord = ReservedProduct::where('product_id', $cartItem->product_id)->first()) {
+                        $reservedRecord->increment('reserved_inventory', $cartItem->quantity);
+                        $reservedRecord->decrement('available_inventory', $cartItem->quantity);
+                    } else {
+                        ReservedProduct::create([
+                            'product_id' => $cartItem->product_id,
+                            'total_inventory' => 0,
+                            'reserved_inventory' => $cartItem->quantity,
+                            'available_inventory' => -$cartItem->quantity,
+                        ]);
                     }
                 }
 

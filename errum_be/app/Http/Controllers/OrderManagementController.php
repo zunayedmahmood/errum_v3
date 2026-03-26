@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\ProductBatch;
+use App\Models\ReservedProduct;
 use App\Models\Store;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -100,6 +100,21 @@ class OrderManagementController extends Controller
 
                 // Check inventory for each order item
                 foreach ($order->items as $orderItem) {
+                    // Critical: Ensure store assignment operates only on active variant product_ids.
+                    if (!$orderItem->product || $orderItem->product->is_archived) {
+                        $storeData['inventory_details'][] = [
+                            'product_id' => $orderItem->product_id,
+                            'product_name' => $orderItem->product_name,
+                            'product_sku' => $orderItem->product_sku,
+                            'required_quantity' => $orderItem->quantity,
+                            'available_quantity' => 0,
+                            'can_fulfill' => false,
+                            'batches' => [],
+                        ];
+                        $canFulfill = false;
+                        continue;
+                    }
+
                     $availableBatches = ProductBatch::where('product_id', $orderItem->product_id)
                         ->where('store_id', $store->id)
                         ->where('availability', true)
@@ -235,6 +250,51 @@ class OrderManagementController extends Controller
             DB::beginTransaction();
 
             try {
+                // Deduct stock FIFO, update order_items, and decrement reserved_inventory
+                foreach ($order->items as $orderItem) {
+                    $remainingQty = $orderItem->quantity;
+                    
+                    $batches = ProductBatch::where('product_id', $orderItem->product_id)
+                        ->where('store_id', $storeId)
+                        ->where('availability', true)
+                        ->where('quantity', '>', 0)
+                        ->where(function($query) {
+                            $query->whereNull('expiry_date')
+                                ->orWhere('expiry_date', '>', now());
+                        })
+                        ->orderBy('expiry_date', 'asc') // FIFO
+                        ->orderBy('created_at', 'asc')
+                        ->get();
+                        
+                    // Keep track of the first batch used to update order_item
+                    $firstBatchId = null;
+
+                    foreach ($batches as $batch) {
+                        if ($remainingQty <= 0) break;
+                        
+                        $deductQty = min($batch->quantity, $remainingQty);
+                        $batch->quantity -= $deductQty;
+                        $batch->save(); // ProductBatchObserver updates total_inventory automatically
+                        
+                        if (!$firstBatchId) {
+                            $firstBatchId = $batch->id;
+                        }
+                        
+                        $remainingQty -= $deductQty;
+                    }
+
+                    // Update order item with the primary batch used
+                    $orderItem->update([
+                        'product_batch_id' => $firstBatchId,
+                    ]);
+
+                    // Decrement reserved_inventory (since physical stock is now deducted)
+                    if ($reservedRecord = ReservedProduct::where('product_id', $orderItem->product_id)->first()) {
+                        $reservedRecord->decrement('reserved_inventory', $orderItem->quantity);
+                        $reservedRecord->increment('available_inventory', $orderItem->quantity); // total_inventory will drop simultaneously, so available effectively stays same
+                    }
+                }
+
                 // Update order
                 $order->update([
                     'store_id' => $storeId,
@@ -246,14 +306,6 @@ class OrderManagementController extends Controller
                         'assignment_notes' => $request->notes,
                     ]),
                 ]);
-
-                // TODO: Create notification for store
-                // Notification::create([
-                //     'type' => 'new_order_assignment',
-                //     'store_id' => $storeId,
-                //     'order_id' => $order->id,
-                //     'message' => "New order {$order->order_number} assigned to your store",
-                // ]);
 
                 DB::commit();
 
@@ -304,12 +356,40 @@ class OrderManagementController extends Controller
             ];
         }
 
-        // Recommend first store that can fulfill entire order
-        $bestStore = reset($canFulfillStores);
+        // Among stores that can fulfill, find the one with the earliest expiring required batch
+        $bestStore = null;
+        $earliestExpiry = null;
+        
+        foreach ($canFulfillStores as $store) {
+            $storeEarliest = null;
+            // Get expiry of the batches this store would use for exact variant ID
+            foreach ($store['inventory_details'] ?? [] as $detail) {
+                foreach ($detail['batches'] ?? [] as $batch) {
+                    if (!empty($batch['expiry_date'])) {
+                        $expiryTime = strtotime($batch['expiry_date']);
+                        if ($storeEarliest === null || $expiryTime < $storeEarliest) {
+                            $storeEarliest = $expiryTime;
+                        }
+                    }
+                }
+            }
+            
+            // If this store has an earlier expiry than our current best, or if we haven't found one yet
+            if (!$bestStore || ($storeEarliest !== null && ($earliestExpiry === null || $storeEarliest < $earliestExpiry))) {
+                $earliestExpiry = $storeEarliest;
+                $bestStore = $store;
+            }
+        }
+        
+        // Fallback to the first store if logic failed
+        if (!$bestStore) {
+            $bestStore = reset($canFulfillStores);
+        }
+
         return [
             'store_id' => $bestStore['store_id'],
             'store_name' => $bestStore['store_name'],
-            'reason' => 'Can fulfill entire order',
+            'reason' => 'Can fulfill entire order' . ($earliestExpiry ? ' (Optimized FIFO expiry)' : ''),
             'fulfillment_percentage' => 100,
         ];
     }

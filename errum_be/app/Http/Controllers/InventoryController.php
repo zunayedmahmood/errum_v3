@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductBatch;
+use App\Models\ReservedProduct;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\MasterInventory;
@@ -57,11 +58,17 @@ class InventoryController extends Controller
                         ];
                     })->values();
 
+                    $reservedRecord = \App\Models\ReservedProduct::where('product_id', $productId)->first();
+                    $availableQuantity = $reservedRecord ? max(0, $reservedRecord->available_inventory) : $totalQuantity;
+                    $reservedQuantity = $reservedRecord ? $reservedRecord->reserved_inventory : 0;
+
                     return [
                         'product_id' => $product->id,
                         'product_name' => $product->name,
                         'sku' => $product->sku,
                         'total_quantity' => $totalQuantity,
+                        'available_quantity' => $availableQuantity,
+                        'reserved_quantity' => $reservedQuantity,
                         'stores_count' => $storeBreakdown->count(),
                         'stores' => $storeBreakdown,
                         'is_low_stock' => $batches->contains(function ($batch) {
@@ -117,11 +124,17 @@ class InventoryController extends Controller
                         ];
                     })->values();
 
+                    $reservedRecord = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
+                    $availableQuantity = $reservedRecord ? max(0, $reservedRecord->available_inventory) : $totalQuantity;
+                    $reservedQuantity = $reservedRecord ? $reservedRecord->reserved_inventory : 0;
+
                     return [
                         'product_id' => $product->id,
                         'product_name' => $product->name,
                         'sku' => $product->sku,
                         'total_quantity' => $totalQuantity,
+                        'available_quantity' => $availableQuantity,
+                        'reserved_quantity' => $reservedQuantity,
                         'available_in_stores' => $storeAvailability->count(),
                         'stores' => $storeAvailability,
                     ];
@@ -232,6 +245,7 @@ class InventoryController extends Controller
                     'product_name' => $product->name,
                     'sku' => $product->sku,
                     'total_quantity' => $totalQuantity,
+                    'available_quantity' => \App\Models\ReservedProduct::where('product_id', $product->id)->value('available_inventory') ?? $totalQuantity,
                     'total_value' => $totalValue,
                     'average_unit_cost' => $totalQuantity > 0 ? $totalValue / $totalQuantity : 0,
                 ];

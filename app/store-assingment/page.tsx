@@ -334,7 +334,6 @@ export default function StoreAssignmentPage() {
       store_name: string;
       store_address: string;
       byProduct: Map<number, number>;
-      bySku: Map<string, number>;
     };
 
     const warehouseAgg = new Map<number, WarehouseAgg>();
@@ -347,7 +346,6 @@ export default function StoreAssignmentPage() {
           store_name: meta?.name ?? fallbackName ?? `Warehouse #${id}`,
           store_address: meta?.address ?? fallbackAddress ?? '—',
           byProduct: new Map<number, number>(),
-          bySku: new Map<string, number>(),
         });
       }
       return warehouseAgg.get(id)!;
@@ -377,9 +375,6 @@ export default function StoreAssignmentPage() {
         if (productId) {
           agg.byProduct.set(productId, toNumber(agg.byProduct.get(productId)) + qty);
         }
-        if (sku) {
-          agg.bySku.set(sku, toNumber(agg.bySku.get(sku)) + qty);
-        }
       }
     }
 
@@ -390,8 +385,7 @@ export default function StoreAssignmentPage() {
         const sku = String(oi?.product_sku || '').trim().toLowerCase();
 
         const byPid = pid ? toNumber(w.byProduct.get(pid)) : 0;
-        const bySku = sku ? toNumber(w.bySku.get(sku)) : 0;
-        const available = Math.max(byPid, bySku);
+        const available = byPid;
 
         return {
           product_id: pid,
@@ -578,7 +572,7 @@ export default function StoreAssignmentPage() {
       }, 800);
     } catch (error: any) {
       console.error('Error assigning order:', error);
-      displayToast(error?.message || 'Failed to assign order', 'error');
+      displayToast(error?.response?.data?.message || error?.message || 'Failed to assign order', 'error');
     } finally {
       setIsAssigning(false);
     }

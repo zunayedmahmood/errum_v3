@@ -243,13 +243,10 @@ class StoreFulfillmentController extends Controller
             DB::beginTransaction();
 
             try {
-                // Check if stock was already deducted (batch_id existed before scanning)
-                $stockAlreadyDeducted = !is_null($orderItem->product_batch_id);
-                
-                // Update order item with scanned barcode and batch
+                // Update order item with scanned barcode
                 $orderItem->update([
                     'product_barcode_id' => $barcode->id,
-                    'product_batch_id' => $barcode->batch_id,
+                    // Note: We no longer update product_batch_id here because it was set during assignOrderToStore
                 ]);
 
                 // Update barcode status
@@ -263,18 +260,7 @@ class StoreFulfillmentController extends Controller
                     ]),
                 ]);
 
-                // Deduct from batch quantity ONLY if not already deducted at order creation
-                // For social commerce orders without initial store_id, stock is deducted here
-                if ($barcode->batch && !$stockAlreadyDeducted) {
-                    $barcode->batch->decrement('quantity', 1);
-                    
-                    \Log::info('Stock deducted at barcode scanning', [
-                        'order_id' => $order->id,
-                        'order_item_id' => $orderItem->id,
-                        'batch_id' => $barcode->batch_id,
-                        'quantity' => 1,
-                    ]);
-                }
+                // Note: Stock deduction is no longer performed here. It is handled in OrderManagementController::assignOrderToStore
 
                 // Update order status to picking if this is first scan
                 if ($order->status === 'assigned_to_store') {
