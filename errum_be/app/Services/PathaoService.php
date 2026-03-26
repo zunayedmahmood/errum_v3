@@ -357,7 +357,7 @@ class PathaoService
             'recipient_city' => $shipment->delivery_address['city'] ?? null,
             'recipient_zone' => $shipment->delivery_address['zone'] ?? null,
             'recipient_area' => $shipment->delivery_address['area'] ?? null,
-            'delivery_type' => $shipment->delivery_type === 'express' ? 48 : 12, // 48 for express, 12 for regular
+            'delivery_type' => $shipment->delivery_type === 'express' ? 12 : 48, // 12 for On Demand, 48 for Normal (Aligned with Manual)
             'item_type' => 2, // 2 for parcel
             'special_instruction' => $shipment->special_instructions,
             'item_quantity' => $order->items->sum('quantity'),

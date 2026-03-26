@@ -27,6 +27,8 @@ import {
   HandCoins,
   Copy,
   ExternalLink,
+  User,
+  CreditCard,
 } from 'lucide-react';
 
 import orderService, { type Order as BackendOrder } from '@/services/orderService';

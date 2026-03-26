@@ -570,20 +570,21 @@ class Shipment extends Model
 
     public function getPackageDescription()
     {
-        $products = $this->getPackageProducts();
-        if ($products->isEmpty()) {
+        $order = $this->order;
+        if (!$order || $order->items->isEmpty()) {
             return 'Package containing ordered items';
         }
 
-        $productNames = $products->pluck('name')->take(3)->join(', ');
-        $remaining = $products->count() - 3;
+        $itemsDescription = $order->items->map(function ($item) {
+            $name = $item->product_name ?: ($item->product->name ?? 'Unknown Item');
+            return "{$name} qty:{$item->quantity}";
+        })->join("\n");
 
-        $description = "Package containing: {$productNames}";
-        if ($remaining > 0) {
-            $description .= " and {$remaining} other item(s)";
+        if (mb_strlen($itemsDescription) > 250) {
+            return mb_substr($itemsDescription, 0, 247) . '...';
         }
 
-        return $description;
+        return $itemsDescription;
     }
 
     public function getStatusColorAttribute()

@@ -312,7 +312,7 @@ class ShipmentController extends Controller
             $totalWeight = $order->items->sum(function($item) {
                 return ($item->product->weight ?? 0.5) * $item->quantity;
             });
-            $totalWeight = max($totalWeight, 0.1); // Minimum 0.1kg
+            $totalWeight = max($totalWeight, 0.5); // Minimum 0.5kg as per Pathao manual
 
             // Prepare Pathao order data
             $pathaoData = [

@@ -148,13 +148,18 @@ class MultiStoreShipmentController extends Controller
                     'recipient_city' => $request->recipient_city,
                     'recipient_zone' => $request->recipient_zone,
                     'recipient_area' => $request->recipient_area,
-                    'delivery_type' => $request->delivery_type ?? 'Normal',
-                    'item_type' => $request->item_type ?? 'Parcel',
+                    'delivery_type' => ($request->delivery_type ?? 'Normal') === 'On Demand' ? 12 : 48,
+                    'item_type' => ($request->item_type ?? 'Parcel') === 'Document' ? 1 : 2,
                     'special_instruction' => $request->special_instruction,
                     'item_quantity' => $items->sum('quantity'),
                     'item_weight' => $itemWeight,
                     'amount_to_collect' => $order->payment_method === 'cod' ? $itemValue : 0,
-                    'item_description' => $items->pluck('product_name')->join(', '),
+                    'item_description' => (function($items) {
+                        $desc = $items->map(function ($item) {
+                            return "{$item->product_name} qty:{$item->quantity}";
+                        })->join("\n");
+                        return mb_strlen($desc) > 250 ? mb_substr($desc, 0, 247) . '...' : $desc;
+                    })($items),
                 ];
 
                 try {
