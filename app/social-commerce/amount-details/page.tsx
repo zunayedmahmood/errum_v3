@@ -50,7 +50,7 @@ export default function AmountDetailsPage() {
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   
-  const [vatRate, setVatRate] = useState('5');
+
   const [transportCost, setTransportCost] = useState('0');
   
   // Payment options: 'full', 'partial', or 'none'
@@ -199,9 +199,9 @@ export default function AmountDetailsPage() {
 
   const subtotal = orderData.subtotal || 0;
   const totalDiscount = orderData.items?.reduce((sum: number, item: any) => sum + (parseFloat(item.discount_amount) || 0), 0) || 0;
-  const vat = (subtotal * parseFloat(vatRate)) / 100;
+  const vat = 0; // VAT removed — hardcoded to 0
   const transport = parseFloat(transportCost) || 0;
-  const total = subtotal + vat + transport;
+  const total = subtotal + transport;
 
   const selectedMethod = paymentMethods.find(m => String(m.id) === selectedPaymentMethod);
   const codMethod = paymentMethods.find(m => String(m.id) === codPaymentMethod);
@@ -617,27 +617,7 @@ export default function AmountDetailsPage() {
                 <span className="text-red-600 dark:text-red-400">-৳{totalDiscount.toFixed(2)}</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">VAT</label>
-                  <input
-                    type="text"
-                    value={`৳${vat.toFixed(2)}`}
-                    readOnly
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-gray-50 dark:bg-gray-600 text-gray-900 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">VAT Rate %</label>
-                  <input
-                    type="number"
-                    value={vatRate}
-                    onChange={(e) => setVatRate(e.target.value)}
-                    disabled={isProcessing}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-                  />
-                </div>
-              </div>
+
 
               <div>
                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Transport Cost</label>

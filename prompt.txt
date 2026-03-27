@@ -89,55 +89,11 @@ generate and save a detailed md file /storage/Fullstack-Laravel-Next/errum_v2/Do
 I'll use this md file to tell Gemini in antigravity.
 
 
-### Stock deduction issue solve:
-
-read Documentation/26_Mar_26 reserve stock plan.md and understand the entire plan. I've also pasted it below:
-
-Read the entire backend controller, model related to order, product, product_batch and anything relevant.
-
-Implement the changes mentioned in the md file.
-DO NOT make any additional changes. ONLY change the stricly necessary part.
-then, make an absolutely detailed, very descriptive, lengthy md file titled "26_Mar_26 reserve stock.md". It should discuss and explain in detail how the new functionalities behave, examples and edge cases.
-
-What you need to know:
-->the files in errum_be is the backend code. 
-->DO NOT run "php artisan make:something name" and instead directly create the file
-->DO NOT run th migrations. 
-->Just create the additional files and write the code.
-->If the observers or anything similar need to be registered, register them (see the other observers to decide if that's necessary).                                                                             
-
-
-### assign store page:
-
-read the @app/store-assingment/page.tsx and understand it and all the backend code it calls.
-
-currently it does the following:
-->check availability in a store against the count of the entire sku 
-->determines order availability like that.
-
-Client's business logic:
-->if no store has all the products, manager (outside of website) calls the necessary branches and aggregates the requirements to a single store (this part is arlready Implemented in code. just accept) and can then assign from there.
-
-What i want to do:
-->check availability in a store against the batches of the ordered product (variant) in that store instead of the entire sku.
-
-What i want you to do:
-->go through all the relevant backend code and check for compatibilty issues.
-
-then make an absolutely detailed, very descriptive, lengthy md file titled "27_Mar_26 store assingment by prod_id compatibilty check.md". It should discuss and explain in detail any issue you find and propse solves for them.
-I'll use this md file to tell Gemini in antigravity.
 
 
 
 
-### searchBar fixes:
+### e-commerce/product/[id]
 
-the last edits had some problems. Do these changes:
-->currently, if the update exceeds global availability, but the update is permitted to allow administrative flexibility. change it and make it strictly blocked. 
-->"addItem" has a "global stock" sanity check using ReservedProduct to log availability for audit purposes. ensure that, it blocks any addItem for products that have no availabile stock (in ReservedProduct table)
-
-Then make this change:
-->Whenever order is edited, it's status should be reset to pending_assignment
-->Make necessary changes to backend and frontend.
-
-Make sure all the chnages are compatible and do strict integrity checks.
+currently:
+->this page currently shows under category, category name and Total stock (probably from sum of all batches).

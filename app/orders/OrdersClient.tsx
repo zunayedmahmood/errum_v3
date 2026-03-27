@@ -2551,17 +2551,12 @@ export default function OrdersDashboard() {
 
     setIsProductLoading(true);
     try {
-      const products = await productService.advancedSearchAll(
-        {
-          query,
-          is_archived: false,
-          enable_fuzzy: true,
-          fuzzy_threshold: 60,
-          search_fields: ['name', 'sku', 'description', 'category', 'custom_fields'],
-          per_page: 50,
-        },
-        { max_items: 5000 }
-      );
+      const searchResult = await productService.advancedSearch({
+        query,
+        enable_fuzzy: true,
+        per_page: 50,
+      });
+      const products = searchResult.data;
 
       const results: any[] = [];
 
