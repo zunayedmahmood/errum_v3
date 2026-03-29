@@ -321,7 +321,7 @@ class ShipmentController extends Controller
                 'recipient_name' => $shipment->recipient_name,
                 'recipient_phone' => $shipment->recipient_phone,
                 'recipient_address' => $recipientAddress,  // Complete address for auto-mapping
-                'delivery_type' => $shipment->delivery_type === 'express' ? 48 : 12,  // 12=express, 48=normal
+                'delivery_type' => $shipment->delivery_type === 'express' ? 12 : 48,  // 12=express, 48=normal
                 'item_type' => 2,  // 1=document, 2=parcel
                 'special_instruction' => $shipment->special_instructions ?? '',
                 'item_quantity' => (int) $order->items->sum('quantity'),

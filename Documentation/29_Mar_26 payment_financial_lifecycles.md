@@ -1,131 +1,178 @@
-# Payment & Financial Lifecycles - Errum V2
+# Payment & Financial Lifecycles
 
-This document explains the financial architecture of Errum V2, detailing how payments are processed, recorded, and reconciled across different sale types.
+This document details the financial plumbing of Errum V2. It explains how money is tracked, from simple POS payments to complex split installments, vendor advances, and SSLCommerz gateway interactions.
+
+## Table of Contents
+1. [Payment Status Lifecycle](#payment-status-lifecycle)
+2. [Installment Lifecycle](#installment-lifecycle)
+3. [Advanced Payment Lifecycle](#advanced-payment-lifecycle)
+4. [SSLCommerz Payment Flow](#sslcommerz-payment-flow)
+5. [Transaction Lifecycle](#transaction-lifecycle)
+
+---
 
 ## 1. Payment Status Lifecycle
-Errum V2 uses a granular payment status system to track the financial state of an order relative to its total value.
 
-### Status Transitions:
-```
-[ Pending ] -> [ Partial ] -> [ Paid ]
-     |             |            |
-     +-------------+------------+-----> [ Refunded ]
-     |
-     v
-[ Failed / Unpaid ]
+Tracks the overarching financial state of an order or invoice.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Unpaid
+    Unpaid --> Pending: Gateway Initiated
+    Pending --> Paid: Full Amount Received
+    Unpaid --> Partial: Advance Received
+    Partial --> Paid: Remaining Cleared
+    Pending --> Failed: Gateway Rejected
+    Paid --> Refunded: Full Reversal
+    Partial --> Refunded: Partial Reversal
 ```
 
-*   **Pending**: Default state for new orders (except POS). No verified payment has been received.
-*   **Partial**: At least one payment has been made, but the `paid_amount` < `total_amount`.
-*   **Paid**: Total payments equal or exceed the order value.
-*   **Failed**: Specific to online payments (SSLCommerz) where the transaction was not successful.
-*   **Refunded**: One or more payments have been reversed or credited back to the customer.
+### Detailed Phases
+- **Unpaid:** Default state upon order creation (e.g., Cash on Delivery).
+- **Pending:** The user has been redirected to a payment gateway, waiting for IPN (Instant Payment Notification).
+- **Partial:** Common in Social Commerce. The customer paid a 500 BDT advance to confirm the order, with the rest as COD.
+- **Paid:** The sum of all successful transactions meets or exceeds the order total.
+- **Failed / Refunded:** Terminal failure or reversal states.
+
+### Examples
+- **Example A:** A social commerce order is created for 5000 BDT. The customer sends 1000 BDT via bKash. Status becomes *Partial*. The courier collects 4000 BDT on delivery. Status becomes *Paid*.
+
+### Edge Cases
+- **Overpayment:** A customer accidentally transfers 5500 BDT instead of 5000 BDT. The system should mark it as Paid but flag the 500 BDT overage in the customer's wallet or as an anomaly.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Race condition where two rapid webhook calls from a payment gateway attempt to mark the order as *Paid* simultaneously, resulting in double-counting revenue.
+- **Suggested Fix (Antigravity prompt):** "Add a unique constraint on `transaction_id` from the gateway, and use `firstOrCreate` or atomic locks when processing gateway webhooks to ensure idempotency."
 
 ---
 
 ## 2. Installment Lifecycle
-Used for high-value items, allowing customers to pay over time.
 
-### The Flow:
-1.  **Setup Plan**: Admin defines the number of installments and due dates.
-2.  **Create Schedule**: System generates `Installment` records linked to the `Order`.
-3.  **Add Installment Payment**: Customer pays a single installment.
-4.  **Update Progress**: System automatically calculates the remaining balance and updates the order's `payment_status`.
+Used for high-value items where customers pay over time.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> SetupPlan: Terms Agreed
+    SetupPlan --> CreateSchedule: Generate EMI Dates
+    CreateSchedule --> AddPayment: Payment Received
+    AddPayment --> UpdateProgress: Recalculate Balance
+    UpdateProgress --> AddPayment: Next EMI
+    UpdateProgress --> Completed: Balance is 0
+    UpdateProgress --> Defaulted: Missed Deadlines
+```
+
+### Detailed Phases
+- **Setup Plan:** Define total amount, interest (if any), and number of months.
+- **Create Schedule:** System generates expected dates and amounts for each installment.
+- **Add Installment Payment:** Customer pays an EMI tranche.
+- **Update Progress:** System checks if the remaining balance is zero.
+
+### Examples
+- **Example A:** 12,000 BDT Laptop over 3 months. Schedule created: 4k in Jan, 4k in Feb, 4k in Mar. After Feb payment, progress is 66%, status is Active.
+
+### Edge Cases
+- **Early Payoff:** Customer wants to pay the remaining 8k in February. The system must allow consolidating the remaining scheduled tranches into one payment.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Rounding errors. 10,000 / 3 = 3333.33. Three payments of 3333.33 leaves 0.01 unpaid, keeping the status from reaching *Completed*.
+- **Suggested Fix:** Always calculate the final installment dynamically as `Total - Sum(Previous Installments)` rather than a fixed division, ensuring the balance hits exactly 0.
 
 ---
 
 ## 3. Advanced Payment Lifecycle
-Errum V2 supports complex financial scenarios beyond simple cash/card transactions.
 
-### A. Split Payment
-*   **Definition**: A single order paid using multiple methods (e.g., $50 Cash + $100 Card).
-*   **Implementation**: `OrderPayment` acts as the parent, with multiple `PaymentSplit` records.
-*   **Integrity**: The sum of `PaymentSplit` amounts MUST equal the `OrderPayment->amount`.
+Covers complex POS transactions involving multiple tender types and cash drawer tracking.
 
-### B. Cash Denomination Tracking
-*   **Context**: Primarily for POS and physical stores.
-*   **Flow**: When a cash payment is received, the system can record the specific notes (e.g., 2 x 500 BDT) for cash drawer reconciliation.
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> SimplePayment: Single Tender (e.g., Cash)
+    [*] --> SplitPayment: Multi Tender
+    SplitPayment --> CashPortion
+    SplitPayment --> CardPortion
+    CashPortion --> CashDenominationTracking: End of Day
+```
+
+### Detailed Phases
+- **Simple Payment:** One transaction covers the total.
+- **Split Payment:** Customer pays 50% in Cash and 50% via Credit Card. Generates two linked `Transaction` records against one `Order`.
+- **Cash Denomination Tracking:** At the end of the shift, the cashier must reconcile physical bills (e.g., 5x1000 notes, 10x500 notes) against the system's expected cash total.
+
+### Examples
+- **Example A:** Bill is 1500 BDT. Customer gives 1000 Cash and swipes Card for 500. Two transactions are logged. Cash drawer expected amount increases by 1000.
+
+### Edge Cases
+- **Refund on Split Payment:** If the customer returns the item, how is the refund issued? Usually, it defaults to returning the exact split (1000 Cash, 500 Card), but staff may need an override to refund entirely in Cash.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Cashier inputs the wrong cash given (e.g., types 10000 instead of 1000), messing up the change calculation and the end-of-day drawer reports.
+- **Suggested Fix:** Implement a hard warning if the "Cash Given" exceeds 500% of the total bill amount, requiring a manager's PIN to proceed.
 
 ---
 
 ## 4. SSLCommerz Payment Flow
-The integration with the SSLCommerz gateway follows a strict security handshake.
 
-**Sequence Diagram:**
-1.  **Initiate**: Frontend requests payment. Backend calls SSLCommerz `Session Create` API.
-2.  **Redirect**: User is sent to SSLCommerz hosted page.
-3.  **Handshake**: User pays. SSLCommerz redirects back to Backend `Success` URL.
-4.  **Validation**: Backend calls SSLCommerz `Order Validation` API to verify the transaction.
-5.  **IPN (Instant Payment Notification)**: A server-to-server callback used as a fail-safe if the user closes the browser before redirection.
+The standard lifecycle for digital payments via the primary gateway.
+
+### Flowchart
+```mermaid
+sequenceDiagram
+    participant User
+    participant Errum
+    participant SSLCommerz
+    
+    User->>Errum: Click Pay
+    Errum->>SSLCommerz: Initiate (Generate URL)
+    SSLCommerz-->>User: Redirect to Gateway
+    User->>SSLCommerz: Enter OTP/Card Details
+    alt Success
+        SSLCommerz->>Errum: IPN Webhook (Success)
+        Errum->>DB: Mark Paid
+        SSLCommerz-->>User: Redirect to Success Page
+    else Failure/Cancel
+        SSLCommerz->>Errum: IPN Webhook (Fail)
+        Errum->>DB: Mark Failed
+        SSLCommerz-->>User: Redirect to Fail Page
+    end
+```
+
+### Detailed Phases
+- **Initiate:** System builds payload with `tran_id` and total amount, requests session URL from SSLCommerz.
+- **Success/Failure:** User interaction on the gateway.
+- **IPN (Instant Payment Notification):** The server-to-server webhook that is the *source of truth*. Never trust the user's browser redirect.
+
+### Edge Cases
+- **Browser Closure:** User pays successfully on SSLCommerz but closes the browser before the redirect. The IPN is the only thing that saves the order.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** IPN spoofing. Malicious actors sending fake POST requests to the IPN endpoint claiming payment success.
+- **Suggested Fix:** Ensure the IPN controller cryptographically verifies the `val_id` or signature provided by SSLCommerz using the Store Password secret before processing the payment.
 
 ---
 
 ## 5. Transaction Lifecycle
-The `Transaction` model is the "Single Source of Truth" for the General Ledger.
 
-**Flow:**
-*   **Create**: Triggered by an `OrderPayment` completion or manual entry.
-*   **Complete**: Funds are confirmed in the bank/cash account.
-*   **Fail**: Transaction was aborted or rejected.
-*   **Cancel**: Reversal of an existing transaction (before it is reconciled).
+The base level tracking of all money movement (Inflow/Outflow).
 
----
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Create: Record Generated
+    Create --> Complete: Money Moved
+    Create --> Fail: Rejection
+    Create --> Cancel: Voided by Admin
+```
 
-## 6. Accounting: Double-Entry Principles
-Every completed `OrderPayment` generates a balanced transaction set.
+### Detailed Phases
+- **Create:** Transaction record is inserted.
+- **Complete:** Final state for successful movement. Updates account ledgers.
+- **Fail/Cancel:** Invalidates the transaction.
 
-| Account | Type | Impact |
-| :--- | :--- | :--- |
-| **Cash/Bank** | Debit | Increases Assets |
-| **Sales Revenue** | Credit | Increases Income |
-| **Tax Payable** | Credit | Increases Liability |
+### Examples
+- **Example A:** A vendor is paid 50,000 BDT. An Outflow transaction is created and Completed, reducing the main company bank account balance.
 
----
-
-## 7. Inclusive Tax Proportionality
-Errum V2 calculates tax on a per-payment basis for accurate reporting during partial payments.
-
-**Example**:
-*   Order Total: $115 (including 15% tax = $15).
-*   Partial Payment 1: $50.
-*   Calculated Tax: $(15 / 115) * 50 = $6.52$.
-*   Calculated Revenue: $50 - 6.52 = $43.48$.
-
----
-
-## 8. Edge Cases & Financial Safety
-
-| Edge Case | Mitigation |
-| :--- | :--- |
-| **Overpayment** | System triggers a warning. Excess can be converted to "Store Credit" (Refund model). |
-| **Currency Mismatch** | `Transaction` records store the `exchange_rate` at the time of the transaction. |
-| **Gateway Timeout** | The IPN listener ensures the order is marked `Paid` even if the user's internet fails post-payment. |
-| **Refund on Partial Payment** | Refunds are prioritized against the most recent payment method. |
-
----
-
-## 9. Integrity Issues & Suggested Fixes
-
-### Issue 1: Split Payment Atomicity
-**Description**: `OrderPaymentController::storeSplitPayment` creates records in a loop. If the server crashes mid-loop, some splits are created but the total is wrong.
-**Suggested Fix**: Wrap the entire loop in a `DB::transaction`. Ensure the final `update` on `OrderPayment` is only done if all splits pass validation.
-
-### Issue 2: Decoupled Payment vs. Transaction Status
-**Description**: An `OrderPayment` can be marked "Completed" while its corresponding `Transaction` is "Pending".
-**Suggested Fix**: Implement an Observer on `OrderPayment` that automatically transitions the `Transaction` status when the payment status changes.
-
-### Issue 3: Manual Transaction Type Mismatch
-**Description**: `TransactionController` auto-detects type (money-in/money-out) based on hardcoded strings. This is fragile.
-**Suggested Fix**: Use an Enum for `TransactionType` and explicitly map every `ReferenceType` (Order, PO, Expense) to a specific Accounting Direction.
-
-### Issue 4: Tax Calculation Rounding Errors
-**Description**: Calculating tax on partial payments can lead to 0.01 differences when summed up.
-**Suggested Fix**: Store the "Remaining Tax to Record" on the `Order` and allocate all remaining cents to the final payment.
-
-### Issue 5: SSLCommerz Session Expiry
-**Description**: A user might initiate a session and leave. The order stays `Pending` but the stock is reserved.
-**Suggested Fix**: Implement a cleanup job that cancels `ecommerce` orders if the linked SSLCommerz session has expired without success.
-
-### Issue 6: Store Credit Expiry Integrity
-**Description**: Store credits are tracked in the `Refund` table. There is no automated trigger to mark them as `expired` in the ledger.
-**Suggested Fix**: Add a scheduled task to `RecycleBinController` or a new `AccountingTask` to transition expired store credits to a "Forfeited Credit" revenue account.
+### Integrity Issues & Suggested Fixes
+- **Issue:** Deleting transactions directly from the database messes up the historical ledger and audit trails.
+- **Suggested Fix:** Transactions should be immutable. If a mistake is made, create a "Reversal" or "Contra" transaction to offset the amount, rather than deleting or modifying the original row.

@@ -45,7 +45,8 @@ class StoreFulfillmentController extends Controller
 
             $orders = Order::where('store_id', $employee->store_id)
                 ->whereIn('status', $statuses)
-                ->where('order_type', 'ecommerce')
+                ->whereIn('order_type', ['ecommerce', 'social_commerce'])
+
                 ->with([
                     'customer',
                     'items.product.images',
@@ -197,7 +198,8 @@ class StoreFulfillmentController extends Controller
 
             $order = Order::where('id', $orderId)
                 ->where('store_id', $employee->store_id)
-                ->whereIn('status', ['assigned_to_store', 'picking'])
+                ->whereIn('status', ['assigned_to_store', 'picking', 'confirmed'])
+
                 ->firstOrFail();
 
             $orderItem = OrderItem::where('id', $request->order_item_id)

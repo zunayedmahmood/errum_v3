@@ -144,9 +144,9 @@ we want this change: ignore that and just ensure th barcode scanned belongs to a
 
 
 ####
-go through the entire codebase and read all the codes.
+go through the entire codebase and read all the codes. Don't read files in the Documentation/ folder.
 write me 5 individual md files for each of the headers below in Documentation/ .
-these md files should be minimum 300 lines long each. 
+these md files should be minimum 300 lines long each. and naming will be like "29_Mar_26 [header name].md"
 each should discuss in details how that Lifecycle works along with descriptive graphs, examples, edge cases 
 If you find any integrity issues, list them and suggest fixes that i can give to gemini in antigravity.
 

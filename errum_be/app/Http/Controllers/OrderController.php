@@ -357,8 +357,12 @@ class OrderController extends Controller
             // Determine initial status based on order type and store assignment
             // Orders without store need assignment first
             $initialStatus = 'pending';
-            if (in_array($request->order_type, ['social_commerce', 'ecommerce']) && $storeId === null) {
-                $initialStatus = 'pending_assignment'; // Waiting for store assignment
+            if (in_array($request->order_type, ['social_commerce', 'ecommerce'])) {
+                if ($storeId === null) {
+                    $initialStatus = 'pending_assignment'; // Waiting for store assignment
+                } elseif ($request->order_type === 'social_commerce') {
+                    $initialStatus = 'assigned_to_store'; // Direct store assignment
+                }
             }
 
             // Create order
@@ -810,7 +814,7 @@ class OrderController extends Controller
         }
 
         // Can only add items to pending orders
-        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed'])) {
+        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed', 'assigned_to_store', 'picking'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot add items to ' . $order->status . ' orders'
@@ -1086,7 +1090,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed'])) {
+        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed', 'assigned_to_store', 'picking'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot update items in ' . $order->status . ' orders'
@@ -1194,7 +1198,7 @@ class OrderController extends Controller
             ], 404);
         }
 
-        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed'])) {
+        if (!in_array($order->status, ['pending', 'pending_assignment', 'confirmed', 'assigned_to_store', 'picking'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot remove items from ' . $order->status . ' orders'
@@ -1264,10 +1268,10 @@ class OrderController extends Controller
             ], 404);
         }
 
-        if (!in_array($order->status, ['pending', 'pending_assignment'])) {
+        if (!in_array($order->status, ['pending', 'pending_assignment', 'assigned_to_store', 'confirmed'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Only pending or pending_assignment orders can be completed'
+                'message' => 'Only pending, pending_assignment, confirmed or store-assigned orders can be completed'
             ], 422);
         }
 

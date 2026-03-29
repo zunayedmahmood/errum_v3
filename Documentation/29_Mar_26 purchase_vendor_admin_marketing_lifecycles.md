@@ -1,131 +1,183 @@
-# Purchase, Vendor, Admin & Marketing Lifecycles - Errum V2
+# Purchase, Vendor, Administrative & Marketing Lifecycles
 
-This document provides technical documentation for the administrative, procurement, and marketing backend of Errum V2.
+This document groups the essential backend lifecycles that keep the business operating. It covers how stock is sourced (Purchasing), who it is sourced from (Vendors), how internal staff are managed (Admin), and how sales are driven (Marketing).
+
+## Table of Contents
+1. [Purchase Order (PO) Lifecycle](#purchase-order-po-lifecycle)
+2. [Vendor Payment Lifecycle](#vendor-payment-lifecycle)
+3. [Vendor Lifecycle](#vendor-lifecycle)
+4. [Employee Lifecycle](#employee-lifecycle)
+5. [Service Order Lifecycle](#service-order-lifecycle)
+6. [Ad Campaign Lifecycle](#ad-campaign-lifecycle)
+7. [Promotion Lifecycle](#promotion-lifecycle)
+
+---
 
 ## 1. Purchase Order (PO) Lifecycle
-Procurement from vendors to warehouses.
 
-### PO Statuses:
-```
-[ Draft ] -> [ Approved ] -> [ Partially Received ] -> [ Received ]
-     |            |                      |
-     v            v                      v
-[ Cancelled ]  [ Overdue ]             [ Closed ]
+The process of ordering new stock from suppliers and integrating it into the master inventory.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> PendingApproval: Submitted
+    PendingApproval --> Approved: Sent to Vendor
+    PendingApproval --> Rejected: Manager Denied
+    Approved --> PartiallyReceived: First Shipment
+    Approved --> Received: Full Shipment
+    PartiallyReceived --> Received: Final Shipment
+    Approved --> Cancelled: Vendor Out of Stock
 ```
 
-1.  **Draft**: Order is being built. Items can be added/removed.
-2.  **Approved**: Manager authorizes the purchase. Price and quantities are locked.
-3.  **Partially Received**: Some items have arrived. Initial batches are created.
-4.  **Received**: 100% of quantities have arrived. All stock is available.
-5.  **Cancelled**: Order aborted before receipt.
+### Detailed Phases
+- **Create (Draft):** Listing the items and quantities needed.
+- **Approve:** Financial sign-off. The PO is formally sent to the vendor.
+- **Receive:** The physical stock arrives at the warehouse. Scanning the items in *creates new active product batches* and updates Master Inventory.
+- **Cancel:** Voiding the order before it arrives.
+
+### Examples
+- **Example A:** Errum orders 1000 plain t-shirts. 500 arrive on Monday (*Partially Received*). The remaining 500 arrive on Wednesday (*Received*). Stock is updated iteratively.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Changing the cost price of an item in a PO after some units have already been received, leading to skewed COGS (Cost of Goods Sold) accounting.
+- **Suggested Fix (Antigravity prompt):** "Lock all line items in a Purchase Order from being edited once the PO transitions to `PartiallyReceived` or `Received`. Require a new PO for subsequent price changes."
 
 ---
 
 ## 2. Vendor Payment Lifecycle
-Managing debt and advance payments to suppliers.
 
-### The Flow:
-*   **Create Payment**: Link to a specific PO or mark as "Advance".
-*   **Allocate Advance**: If a payment was "Advance", staff can later link it to a new PO.
-*   **Cancel/Refund**: Handle corrections or returns of funds.
+Managing accounts payable. How vendors are compensated for Purchase Orders.
 
-**Integrity**: Sum of allocations must always equal `VendorPayment->amount`.
-
----
-
-## 3. Employee Lifecycle
-Managing staff access and organization.
-
-### Key Events:
-*   **Active / Inactive**: Soft status toggle for system access.
-*   **Transfer**: Move an employee from one store to another (updates `store_id`).
-*   **Role Change**: Transition between permissions (e.g., Cashier to Manager).
-*   **MFA Management**: Setup and recovery of multi-factor authentication.
-
----
-
-## 4. Service Order Lifecycle
-Managing service-based sales (e.g., repairs, custom work).
-
-### Stages:
-```
-[ Pending ] -> [ Confirmed ] -> [ In Progress ] -> [ Completed ]
-     |               |                |                |
-     v               v                v                v
-[ Cancelled ]  [ Payment Unpaid ] [ Payment Partial ] [ Payment Paid ]
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Pending
+    Pending --> AllocateAdvance: Pre-payment
+    AllocateAdvance --> Partial: Awaiting Rest
+    Pending --> Paid: Full Payment
+    Partial --> Paid
+    Paid --> Refund: Overpayment Return
 ```
 
-*   **Confirm**: Service availability checked.
-*   **Start**: Labor begins.
-*   **Complete**: Service rendered. Final invoice generated.
+### Detailed Phases
+- **Create:** Associated with a PO or vendor invoice.
+- **Allocate Advance:** Paying a vendor 30% upfront to start manufacturing.
+- **Paid:** The balance is settled.
+- **Refund:** Vendor failed to deliver and returns the advance.
+
+### Edge Cases
+- **Credit Notes:** A vendor owes Errum money from a previous defective batch. This credit note must be applied against a new vendor payment to reduce the cash outflow.
 
 ---
 
-## 5. Ad Campaign Lifecycle
-Attributing sales to marketing efforts.
+## 3. Vendor Lifecycle
 
-### The Flow:
-1.  **Create**: Set platform (FB/Insta), budget, and duration.
-2.  **Target Products**: Explicitly link specific items to the campaign.
-3.  **Active / Inactive**: Toggle attribution logic.
-4.  **Attribution Health**: Job runs nightly to link orders containing targeted products during the campaign window.
+Managing the relationship and status of suppliers.
 
----
+### Detailed Phases
+- **Active:** Vendor is currently approved to supply goods.
+- **Inactive:** Vendor is blacklisted or temporarily suspended (e.g., due to poor quality).
+- **Purchase & Payment History:** Continuous logging of all interactions for yearly vendor evaluation.
 
-## 6. Promotion Lifecycle
-Managing coupons and discounts.
-
-### Flow:
-*   **Create**: Define type (Percentage/Fixed) and constraints (Min Purchase/Expiry).
-*   **Validate Code**: Frontend API call to check eligibility for a customer's cart.
-*   **Apply to Order**: Permanent link created in `promotion_usages`.
-*   **Usage History**: Audit log of all orders that benefited from the promotion.
+### Integrity Issues & Suggested Fixes
+- **Issue:** Deleting a vendor record orphans all historical Purchase Orders.
+- **Suggested Fix:** Vendors must only utilize the Soft Delete (Recycle Bin) lifecycle. Hard deletion should be strictly blocked by foreign key constraints.
 
 ---
 
-## 7. Recycle Bin Lifecycle
-A safety net for accidental deletions.
+## 4. Employee Lifecycle
 
-### Retention Policy (7-Day Rule):
-1.  **Soft Delete**: Item is moved to bin (`deleted_at` set).
-2.  **7-Day Recovery**: User can see the item and "Restore" it.
-3.  **Permanent Delete**: After 7 days, a scheduled task calls `forceDelete()`.
+Managing staff access, roles, and security within the Errum system.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Onboarded: Active
+    Onboarded --> Transfer: Change Store
+    Onboarded --> RoleChange: Promotion/Demotion
+    Onboarded --> Suspended: Temporary Ban
+    Onboarded --> Terminated: Inactive
+    Terminated --> [*]
+```
+
+### Detailed Phases
+- **Active / Inactive:** Controls ability to log in. Terminated employees are marked inactive, not deleted, to preserve activity logs.
+- **Transfer:** Changing an employee's `store_id`, instantly revoking their access to Store A's POS and granting access to Store B.
+- **Role Change:** Updating RBAC permissions (e.g., Cashier to Manager).
+- **MFA Management:** Resetting Two-Factor Authentication if an employee loses their device.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** An employee is terminated, but their active session tokens in the E-commerce or Admin panel remain valid until expiry.
+- **Suggested Fix:** Implement an event listener on `EmployeeStatusChanged`. If status becomes inactive, instantly revoke and delete all Personal Access Tokens (Sanctum/Passport) associated with the user.
 
 ---
 
-## 8. Edge Cases & Administrative Rules
+## 5. Service Order Lifecycle
 
-| Entity | Edge Case | Mitigation |
-| :--- | :--- | :--- |
-| **PO** | **Price Discrepancy** | Receiving clerk can adjust `unit_cost` during receipt, triggering a price update in the Batch. |
-| **Employee** | **Self-Deletion** | System hard-block: An employee cannot deactivate their own account. |
-| **Promotion** | **Usage Limit Overrun** | Atomic `increment` on `usage_count` with DB constraint. |
-| **Vendor** | **Credit Note Mapping** | Credit notes from returns are treated as "Advance Payments" in the vendor ledger. |
+For non-physical product sales, such as repair services, tailoring, or installations.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Store: Request Logged
+    Store --> Confirm: Assigned to Tech
+    Confirm --> Start: Work Begins
+    Start --> Complete: Work Finished, Billable
+    Confirm --> Cancel: Customer No-show
+```
+
+### Detailed Phases
+- **Store:** Customer drops off a laptop for repair.
+- **Confirm & Start:** Technician accepts the job and tracks hours.
+- **Complete:** Service is finished. This triggers an invoice generation in the POS system.
 
 ---
 
-## 9. Integrity Issues & Suggested Fixes
+## 6. Ad Campaign Lifecycle
 
-### Issue 1: Advance Payment Over-Allocation
-**Description**: `VendorPaymentController::allocateAdvance` lacks a row-level lock during the unallocated balance check.
-**Suggested Fix**: Use `DB::table('vendor_payments')->where('id', $id)->lockForUpdate()->first()` before proceeding with allocation.
+Tracking the performance and attribution of marketing efforts.
 
-### Issue 2: Service Order Stock Sync
-**Description**: Service orders can include parts, but they don't seem to trigger the same reservation logic as standard orders.
-**Suggested Fix**: Integrate `OrderItemObserver` logic into `ServiceOrderItem` to reserve physical parts needed for repairs.
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Active: Campaign Live
+    Active --> Paused: Temporarily Halted
+    Active --> Completed: Budget Exhausted / Time Ended
+```
 
-### Issue 3: Campaign Attribution Overlap
-**Description**: If a product is in two active campaigns, the system attributes to the first one it finds.
-**Suggested Fix**: Split the revenue attribution proportionally between all active campaigns that target the product.
+### Detailed Phases
+- **Create & Target Products:** Defining which SKUs belong to a specific Facebook/Google campaign.
+- **Active / Inactive:** Toggling the tracking links.
+- **Attribution Health:** Tracking how many orders were generated by `?utm_campaign=summer_sale`.
 
-### Issue 4: Recycle Bin Cleanup Gaps
-**Description**: `RecycleBinController::autoCleanup` has "Similar for other models" comments, suggesting incomplete coverage.
-**Suggested Fix**: Create a `SoftDeletable` interface and use reflection to find all models using the `SoftDeletes` trait for automatic cleanup.
+### Integrity Issues & Suggested Fixes
+- **Issue:** Customers clicking an ad, adding to cart, leaving, and returning a week later via direct traffic, losing the campaign attribution.
+- **Suggested Fix:** Store the `utm_campaign` tag in an HTTP-only cookie with a 30-day expiry when the user first lands. Read this cookie during checkout to attribute the order correctly.
 
-### Issue 5: Promotion Code Collision
-**Description**: Unique code generation in `PromotionController` uses `Str::random(8)` in a loop, but without a database unique constraint, a collision is possible during high concurrency.
-**Suggested Fix**: Add a `UNIQUE` constraint to the `code` column in the `promotions` table.
+---
 
-### Issue 6: Employee Hierarchy Recursion
-**Description**: `assignManager` prevents direct self-assignment but not circular chains (A manages B, B manages A).
-**Suggested Fix**: Implement a recursive check in `EmployeeController` to ensure the new manager is not a subordinate of the current employee.
+## 7. Promotion Lifecycle
+
+Managing discount codes and automated rules.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Create: Define Rules
+    Create --> Active: Valid Dates
+    Active --> ApplyToOrder: Customer Uses Code
+    ApplyToOrder --> UsageHistory: Logged
+    Active --> Expired: End Date Reached
+```
+
+### Detailed Phases
+- **Create:** Set rules (e.g., "10% off if Cart > 5000 BDT").
+- **Validate Code:** System checks expiry, usage limits, and cart conditions in real-time.
+- **Apply to Order:** Price is reduced.
+- **Usage History:** Tracks who used it, preventing a single user from abusing a "one-time use" code.
+
+### Edge Cases
+- **Concurrent Usage:** A promo code has 1 use left. Two users apply it simultaneously.
+- **Suggested Fix:** Decrement the `usage_count` within an atomic lock during the final order checkout transaction, not just when the code is applied to the cart. If the lock fails or count is 0, reject the order.

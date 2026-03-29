@@ -250,29 +250,9 @@ class OrderManagementController extends Controller
             DB::beginTransaction();
 
             try {
-                // Assign store and intended batch to items without deducting stock
-                foreach ($order->items as $orderItem) {
-                    // Find the best batch (FIFO) to recommend/assign as intended
-                    $bestBatch = ProductBatch::where('product_id', $orderItem->product_id)
-                        ->where('store_id', $storeId)
-                        ->where('availability', true)
-                        ->where('quantity', '>', 0)
-                        ->where(function($query) {
-                            $query->whereNull('expiry_date')
-                                ->orWhere('expiry_date', '>', now());
-                        })
-                        ->orderBy('expiry_date', 'asc') // FIFO
-                        ->orderBy('created_at', 'asc')
-                        ->first();
+                // Note: Stock batches will be determined dynamically during the barcode scanning phase at the branch.
+                // Reserved inventory remains untouched; it will be released during barcode scanning.
 
-                    // Update order item with the intended batch
-                    $orderItem->update([
-                        'product_batch_id' => $bestBatch ? $bestBatch->id : $orderItem->product_batch_id,
-                    ]);
-                    
-                    // Note: reserved_inventory remains untouched. 
-                    // It will be released during barcode scanning in StoreFulfillmentController.
-                }
 
                 // Update order status to assigned_to_store
                 $order->update([

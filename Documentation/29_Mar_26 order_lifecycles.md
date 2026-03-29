@@ -1,168 +1,226 @@
-# Order Lifecycles - Errum V2 (POS, Social, E-commerce)
+# Order Lifecycles (Social, E-commerce, POS)
 
-This document details the complete lifecycle of orders within Errum V2, covering the three primary sales channels: **Point of Sale (POS)**, **Social Commerce**, and **E-commerce**.
+This document provides a comprehensive analysis of the lifecycles governing customer orders across all sales channels in Errum V2. It covers the progression of statuses, fulfillment logic, and multi-store handling.
+
+## Table of Contents
+1. [Order Status Lifecycle](#order-status-lifecycle)
+2. [Order Channel Lifecycle](#order-channel-lifecycle)
+3. [Fulfillment Lifecycle](#fulfillment-lifecycle)
+4. [Scanning/Fulfillment Process](#scanning-fulfillment-process)
+5. [Multi-Store Fulfillment Lifecycle](#multi-store-fulfillment-lifecycle)
+6. [Pre-Order Lifecycle](#pre-order-lifecycle)
+7. [Order Tracking Lifecycle](#order-tracking-lifecycle)
+
+---
 
 ## 1. Order Status Lifecycle
-All online orders (Social/E-com) follow a rigorous state machine to ensure inventory integrity and customer transparency.
 
-### Standard Flow:
-```
-[ Pending Assignment ] -> [ Pending ] -> [ Confirmed ] -> [ Processing ] -> [ Ready for Pickup ] -> [ Shipped ] -> [ Delivered ]
-          |                  |                |                |                    |                  |
-          v                  v                v                v                    v                  v
-     (Unassigned)       (Store Assigned) (Valid/Paid)    (Picking Stock)      (Packed/Labels)     (In Transit)   (Finalized)
+The core state machine that dictates the overall health and progression of an order from creation to completion.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> PendingAssignment: Social/E-com (No Store Assigned)
+    PendingAssignment --> Pending: Assigned to Store
+    Pending --> Confirmed: Payment Verified / Cash on Delivery Accepted
+    Confirmed --> Processing: Items Being Picked
+    Processing --> ReadyForPickup: Store Pickup Selected
+    Processing --> Shipped: Handed to Courier
+    ReadyForPickup --> Delivered: Customer Collected
+    Shipped --> Delivered: Courier Confirmed
+    Delivered --> [*]
+    Pending --> Cancelled: User/Admin Action
 ```
 
-1.  **Pending Assignment**: The order is placed but no store has been assigned to fulfill it. It resides in the "Unassigned" pool.
-2.  **Pending**: A store (or multiple stores) has been assigned. The store employee sees this in their dashboard.
-3.  **Confirmed**: Payment (if online) is verified, or a staff member confirms the order after contacting the customer.
-4.  **Processing**: The order is actively being picked. Barcodes are being scanned.
-5.  **Ready for Pickup/Shipment**: Picking is complete. Packaging and shipping labels (e.g., Pathao) are generated.
-6.  **Shipped**: The courier has picked up the package.
-7.  **Delivered**: Final state. System marks physical deduction as final and releases any lingering reservations.
+### Detailed Phases
+- **Pending Assignment:** An online order has been received but the system has not yet determined which branch will fulfill it.
+- **Pending:** Assigned to a branch, waiting for manual confirmation or payment validation.
+- **Confirmed:** The order is valid. Inventory reservation is locked.
+- **Processing:** Warehouse/Store staff are actively picking and packing the items.
+- **Ready for Pickup / Shipped:** The physical items have left the active inventory area.
+- **Delivered:** Final terminal state. Revenue is fully recognized.
+
+### Examples
+- **Example A:** A user buys a shirt online. It goes to *Pending Assignment*, auto-assigns to Branch 1 (*Pending*), admin confirms it (*Confirmed*), packs it (*Processing*), hands it to Pathao (*Shipped*), and the customer receives it (*Delivered*).
+
+### Edge Cases
+- **Cancellation mid-processing:** A user cancels while the item is marked *Processing*. The system must halt physical dispatch and trigger an inventory reservation rollback.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Orders stuck in *Processing* indefinitely if the shipping courier's webhook (e.g., Pathao) fails to deliver the *Delivered* status.
+- **Suggested Fix (Antigravity prompt):** "Implement a reconciliation cron job that queries the Pathao API every 12 hours for all orders in `Shipped` status older than 3 days to force-sync the final delivery status."
 
 ---
 
 ## 2. Order Channel Lifecycle
-Errum V2 treats each channel with specific logic tailored to its UX requirements.
 
-### A. Counter Sale (POS)
-*   **Characteristics**: Instant fulfillment. No reservation needed.
-*   **Lifecycle**: `Created` -> `Paid` -> `Completed` (all in seconds).
-*   **Integrity**: Direct batch deduction at the moment of sale.
+Orders originate from three distinct channels, each with slightly different automation rules.
 
-### B. Social Commerce (Facebook/WhatsApp/Phone)
-*   **Characteristics**: Manual entry by staff. Requires manual stock reservation.
-*   **Lifecycle**: `Draft` -> `Customer Confirmed` -> `Assigned` -> `Fulfilled`.
-*   **Key Feature**: Ad Attribution. Orders can be linked to active campaigns to track ROI.
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> CounterSale_POS: In-person
+    [*] --> ECommerce: Website
+    [*] --> SocialCommerce: Facebook/Instagram Chat
+    
+    CounterSale_POS --> Delivered: Instant Fulfillment
+    ECommerce --> PendingAssignment: Requires Routing
+    SocialCommerce --> PendingAssignment: Requires Routing & Verification
+```
 
-### C. E-commerce (Website/App)
-*   **Characteristics**: Fully automated. Automatic reservation.
-*   **Lifecycle**: `Checkout` -> `Payment Gateway (SSLCommerz)` -> `Assigned` -> `Fulfilled`.
-*   **Key Feature**: Real-time stock availability check against `Available Inventory` (Total - Reserved).
+### Detailed Phases
+- **Counter Sale (POS):** Immediate completion. The lifecycle starts and ends almost instantly. Physical stock is deducted synchronously.
+- **E-commerce:** Driven by customer self-service. High automation, relies on payment gateways (SSLCommerz).
+- **Social Commerce:** Handled by staff inputting orders on behalf of chat customers. Often involves manual price overrides, custom shipping, and partial advance payments.
+
+### Examples
+- **Example A:** An Instagram customer DMs the page. Staff creates a Social Commerce order. The system tracks it separately from E-commerce for attribution reporting.
+
+### Edge Cases
+- **Channel Blurring:** A customer starts an E-commerce order but completes it via POS (e.g., "Reserve Online, Pay In-Store").
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** POS orders accidentally triggering asynchronous fulfillment jobs meant for E-commerce.
+- **Suggested Fix:** Ensure all event listeners strictly check the `order_channel` attribute before dispatching notification or fulfillment jobs.
 
 ---
 
 ## 3. Fulfillment Lifecycle
-The transition from a "Document" (Order) to "Physical Goods" (Package).
 
-### The "Scanning" Process:
-1.  **Validation**: Verify that the item belongs to the order.
-2.  **Reservation Check**: Ensure the item was reserved globally.
-3.  **Physical Selection**: Scan a specific Barcode.
-4.  **Batch Sync**: The `ProductBatch` linked to that barcode has its quantity decremented by 1.
-5.  **Status Update**: `OrderItem` status changes from `pending` to `scanned`.
+The micro-lifecycle focused specifically on the warehouse/store floor operations.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> PendingFulfillment
+    PendingFulfillment --> Scanned: Barcode Validated
+    Scanned --> Fulfilled: All Items Packed
+    Fulfilled --> [*]
+```
+
+### Detailed Phases
+- **Pending Fulfillment:** A pick-list is generated.
+- **Scanned:** Each item's barcode is scanned. This is the crucial moment where reserved stock becomes deducted physical stock.
+- **Fulfilled:** The box is sealed and labeled.
+
+### Examples
+- **Example A:** Order has 3 items. Staff scans item 1 and 2. Status is *Scanned (Partial)*. They scan item 3. Status becomes *Fulfilled*.
+
+### Edge Cases
+- **Wrong Item Scanned:** System must audibly/visually reject the barcode if it doesn't match the order items.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Staff bypassing the scanner and manually marking orders as *Fulfilled* without physical verification, leading to inventory desync.
+- **Suggested Fix:** Enforce a strict policy/permission in the system that disables the manual "Mark as Fulfilled" button unless a specific Admin override is provided. Force barcode scanning.
 
 ---
 
-## 4. Scanning/Fulfillment Process Detail
-This is the core of the `StoreFulfillmentController`.
+## 4. Scanning/Fulfillment Process
 
-### Physical Deduction Logic:
-```php
-// Step 1: Scan Barcode
-$barcode = ProductBarcode::where('barcode', $input)->first();
+A deeper dive into the technical safety mechanisms of fulfillment.
 
-// Step 2: Associate with Order Item
-$item = OrderItem::where('order_id', $id)->where('product_id', $barcode->product_id)->first();
-
-// Step 3: Atomic Update
-DB::transaction(function() {
-    $barcode->status = 'sold';
-    $batch = $barcode->batch;
-    $batch->decrement('quantity', 1); // physical deduction
-    $item->scan_status = 'scanned';
-    $item->product_barcode_id = $barcode->id;
-});
+### Flowchart
+```mermaid
+sequenceDiagram
+    participant Scanner
+    participant System
+    participant DB
+    Scanner->>System: Scan Barcode
+    System->>DB: Validate Barcode & Order
+    alt Valid
+        DB-->>System: OK
+        System->>DB: Deduct Physical Stock
+        System->>DB: Remove Reservation
+        System-->>Scanner: Success Chime
+    else Invalid
+        DB-->>System: Mismatch
+        System-->>Scanner: Error Alert
+    end
 ```
+
+### Detailed Phases
+- **Validation & Reservation:** System checks if the barcode matches the SKU and if a reservation exists.
+- **Store Assignment:** Verifies the user scanning the item belongs to the store assigned to the order.
+- **Scanning (Physical Deduction):** The core DB transaction.
+- **Finalization Fail-Safe:** Prevents finalizing an order if scanned quantities don't match ordered quantities exactly.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Network dropout immediately after physical deduction but before reservation removal.
+- **Suggested Fix:** All four steps MUST be wrapped in a single Laravel Database Transaction (`DB::transaction(function() { ... })`). If the network drops, the transaction rolls back, preventing data corruption.
 
 ---
 
 ## 5. Multi-Store Fulfillment Lifecycle
-Used when no single store has all items in an order.
 
-### The Split-Order Logic:
-1.  **Detection**: `OrderManagementController` identifies that no store can fulfill 100%.
-2.  **Allocation**:
-    *   Item A -> Store 1
-    *   Item B -> Store 2
-3.  **Multi-Store Status**: Order status set to `multi_store_assigned`.
-4.  **Fulfillment Tasks**: Two separate fulfillment tasks are generated for Store 1 and Store 2.
-5.  **Consolidation**: Items are either shipped separately or moved to a "Central Hub" for combined shipping.
+Handling complex orders where a single store cannot fulfill all items.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> RequiringMultiStore
+    RequiringMultiStore --> ItemLevelAvailability: Check DB
+    ItemLevelAvailability --> AutoAssignment: System Routes
+    AutoAssignment --> StoreFulfillmentTasks: Split Order
+    StoreFulfillmentTasks --> Consolidated: Sent to Hub
+    StoreFulfillmentTasks --> SplitShipments: Sent Directly
+```
+
+### Detailed Phases
+- **Requiring Multi-Store:** Order exceeds inventory of any single store.
+- **Item-Level Store Availability:** The system evaluates stock per item per branch.
+- **Auto/Manual Assignment:** The system creates sub-orders (Store Fulfillment Tasks) for each required branch.
+- **Store Fulfillment Tasks:** Branch A packs Item 1, Branch B packs Item 2.
+
+### Examples
+- **Example A:** Order needs Phone (Store A) and Case (Store B). System splits the fulfillment task. Both stores ship their parts independently (Split Shipments).
+
+### Edge Cases
+- **One store fails to fulfill:** Store A completes its task, but Store B realizes the Case is defective. The master order is now in a partial-fail state.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Customer receives two shipping charges or tracking links and gets confused.
+- **Suggested Fix:** Provide clear UI communication in the Order Tracking page, showing sub-shipments linked to a single Master Order ID.
 
 ---
 
 ## 6. Pre-Order Lifecycle
-Allows selling items before they arrive in stock.
 
-### Flow:
-1.  **Stock Unavailable**: Product set as "Pre-Order" in CMS.
-2.  **Trending**: High volume of pre-orders detected.
-3.  **Mark Stock Available**: PO received for pre-ordered items.
-4.  **Ready to Fulfill**: Pre-orders automatically move to `Pending Assignment`.
+Selling items before physical stock arrives.
 
----
-
-## 7. Order Tracking Lifecycle (Courier Integration)
-Integration with Pathao/Steadfast.
-
-1.  **Courier API**: Handshake between Errum V2 and Pathao.
-2.  **Tracking Number**: Generated and saved to `shipments` table.
-3.  **Webhooks**: Courier sends status updates (Picked up -> Out for Delivery -> Delivered).
-4.  **Auto-Finalization**: System marks order as `delivered` when courier webhook confirms success.
-
----
-
-## 8. Edge Cases & Error Handling
-
-| Scenario | System Response |
-| :--- | :--- |
-| **Duplicate Scan** | `StoreFulfillmentController` throws 422: "Barcode already scanned for this order." |
-| **Wrong Item Scanned** | System checks `product_id`. If mismatch, throws "Item not found in this order." |
-| **Order Cancelled Mid-Fulfillment** | `OrderObserver` releases all reservations. Any scanned barcodes must be manually returned to stock. |
-| **Store Rejects Assignment** | Order moves back to `Pending Assignment` pool. |
-
----
-
-## 9. Examples & Data Structures
-
-### Order Metadata Example:
-```json
-{
-  "order_number": "ORD-20260329-001",
-  "channel": "social_commerce",
-  "fulfillment_type": "multi_store",
-  "fulfillment_details": [
-    { "item_id": 101, "assigned_store_id": 1, "status": "scanned" },
-    { "item_id": 102, "assigned_store_id": 5, "status": "pending" }
-  ]
-}
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> StockUnavailable: Pre-order Opened
+    StockUnavailable --> Trending: High Volume Received
+    Trending --> MarkStockAvailable: Shipment Arrives
+    MarkStockAvailable --> ReadyToFulfill: Reservations Converted
 ```
 
+### Detailed Phases
+- **Stock Unavailable:** Product allows negative reservations (pre-orders).
+- **Mark Stock Available:** When the PO is received, the system matches the new physical stock against the negative reservations first.
+- **Ready to Fulfill:** Standard fulfillment resumes.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Receiving less stock than pre-ordered.
+- **Suggested Fix:** The system must implement a strict FIFO (First In, First Out) queue. The oldest pre-orders get stock assigned; the rest remain in backorder status.
+
 ---
 
-## 10. Integrity Issues & Suggested Fixes
+## 7. Order Tracking Lifecycle
 
-### Issue 1: Split-Order Fulfillment Mismatch
-**Description**: `StoreFulfillmentController` often queries by `order->store_id`. In multi-store orders, `order->store_id` is null.
-**Suggested Fix**: Update controller queries to use `OrderItem->assigned_store_id` when `order->fulfillment_type == 'multi_store'`.
+The customer-facing view of the order status.
 
-### Issue 2: Partial Fulfillment Reservation Release
-**Description**: When an order is partially fulfilled and the rest is cancelled, the `OrderObserver` might release the *entire* reservation quantity instead of just the remaining.
-**Suggested Fix**: Use `quantity - scanned_quantity` when calculating reservation release.
+### Detailed Phases
+- **Pending:** Order received.
+- **Confirmed:** Payment secured.
+- **Shipped:** Courier tracking ID generated.
+- **Out for Delivery:** Courier last-mile status.
+- **Delivered:** Handed to customer.
 
-### Issue 3: Race Condition in Pathao Handshake
-**Description**: If two staff members click "Generate Label" simultaneously, two different Pathao orders might be created for one Errum order.
-**Suggested Fix**: Add a `is_processing_shipment` flag (atomic lock) to the `orders` table during API calls.
+### Edge Cases
+- **Delivery Attempt Failed:** Status needs to reflect "Attempted, will retry" rather than just failing back to Shipped.
 
-### Issue 4: Pre-Order Virtual Inventory
-**Description**: Pre-orders don't have physical stock, but they *reserve* from a non-existent pool.
-**Suggested Fix**: Introduce a `virtual_batch` for pre-orders to track commitments against expected PO quantities, keeping them separate from physical `ReservedProduct` counts.
-
-### Issue 5: Customer Address Sync in Multi-Store
-**Description**: If a customer updates their address, it might not sync to all sub-shipments in a multi-store order.
-**Suggested Fix**: Use an `addresses` table with foreign keys on both `Order` and `Shipment` entities instead of duplicating text fields.
-
-### Issue 6: Payment Verification Loophole
-**Description**: A Social Commerce order can be marked as `Confirmed` without a linked `Transaction`.
-**Suggested Fix**: Enforce `RequiredTransaction` validation in the `confirmed` state transition for specific channels.
+### Integrity Issues & Suggested Fixes
+- **Issue:** Courier APIs have rate limits; hitting them on every customer page load will cause failures.
+- **Suggested Fix:** Cache tracking status responses in Redis for 15-30 minutes, or rely entirely on webhooks to update the local database, serving the customer from the local DB.

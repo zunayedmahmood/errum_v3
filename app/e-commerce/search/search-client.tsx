@@ -140,19 +140,32 @@ export default function SearchClient({ initialQuery = '' }: { initialQuery?: str
     const currentFetchId = ++fetchIdRef.current;
     setIsLoading(true);
     try {
+      // Parse price range for the public catalog API
+      let min_cost: number | undefined;
+      let max_cost: number | undefined;
+      
+      if (priceRange !== 'all') {
+        const parts = priceRange.split('-');
+        if (parts.length === 2) {
+          min_cost = Number(parts[0]);
+          max_cost = Number(parts[1]);
+        }
+      }
+
       const params = {
-        query: query,
+        q: query,
         page: currentPage,
         per_page: PRODUCTS_PER_PAGE,
         category_id: selectedCategoryId !== 'all' ? Number(selectedCategoryId) : undefined,
-        enable_fuzzy: true,
+        min_price: min_cost,
+        max_price: max_cost,
+        sort_by: sortBy,
         group_by_sku: true, // Ensuring unique products by SKU
       };
 
-      // Handle price range if needed (advancedSearch doesn't have explicit min/max_price yet in the controller validation, 
-      // but let's check the controller first. Wait, I should add them to the controller if missing.)
-      
-      const response = await catalogService.advancedSearch(params);
+      // Use the public getProducts endpoint which doesn't require authentication
+      // and supports search, category, and price filtering.
+      const response = await catalogService.getProducts(params as any);
 
       // Check if this is still the most recent request
       if (currentFetchId !== fetchIdRef.current) return;

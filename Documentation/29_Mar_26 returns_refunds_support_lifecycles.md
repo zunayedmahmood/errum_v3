@@ -1,132 +1,144 @@
-# Returns, Refunds & Support Lifecycles - Errum V2
+# Returns, Refunds & Support Lifecycles
 
-This document details the processes for handling product returns, issuing refunds, and managing customer inquiries in the Errum V2 system.
+This document outlines the workflows for post-purchase operations in Errum V2. These lifecycles are crucial for maintaining customer satisfaction, managing defective inventory, and ensuring accurate accounting.
+
+## Table of Contents
+1. [Product Return Lifecycle](#product-return-lifecycle)
+2. [Refund Lifecycle](#refund-lifecycle)
+3. [Contact Message Lifecycle](#contact-message-lifecycle)
+4. [Recycle Bin Lifecycle](#recycle-bin-lifecycle)
+
+---
 
 ## 1. Product Return Lifecycle
-Returns are complex because they involve physical logistics, financial reversal, and inventory reconciliation.
 
-### Return States:
-```
-[ Pending ] -> [ Approved ] -> [ Processing ] -> [ Completed ] -> [ Refunded ]
-     |             |                |                |
-     |             v                v                v
-     +-------> [ Rejected ]   [ QC Failed ]    [ Cancelled ]
-```
+Manages the process when a customer brings an item back, whether for a refund, store credit, or an exchange.
 
-1.  **Pending**: Customer or staff initiates a return request. No physical goods have been received.
-2.  **Approved**: Staff confirms the return is eligible based on the order date and return reason.
-3.  **Processing**: Goods are received at the store. The `quality_check` is underway.
-4.  **Completed**: QC has passed. Inventory has been restored to the batch.
-5.  **Refunded**: The financial portion of the return is finalized.
-6.  **Rejected/QC Failed**: Return is denied, and goods are sent back to the customer or marked as a loss.
-
----
-
-## 2. Inventory Restoration (Cross-Store Logic)
-When a product is returned, it must be put back into the system's stock.
-
-### Workflow:
-*   **Original Store Return**: Item is added back to its original `ProductBatch`. Barcode status changes to `in_shop`.
-*   **Cross-Store Return**: If returned to a different store (e.g., Warehouse instead of Shop):
-    1.  System searches for an existing batch of that product in the receiving store.
-    2.  If none exists, a new "Return Batch" is created using the original's pricing and cost.
-    3.  A `ProductMovement` of type `return` is recorded for audit.
-
----
-
-## 3. Automated Defective Marking
-If a return reason is `defective_product` or `quality_issue`, the system auto-flags the barcode during the `complete` phase.
-
-**Logic Chain**:
-*   `complete()` called on `ProductReturn`.
-*   System maps `return_reason` to `defect_type`.
-*   `ProductBarcode::markAsDefective()` called for the specific units.
-*   Item is removed from saleable stock and moved to the `Defective Products` dashboard.
-
----
-
-## 4. Refund Lifecycle
-The financial settlement of a completed return.
-
-### Refund Methods:
-*   **Original Method**: Reverses the card or bank transaction (automated via SSLCommerz API if supported).
-*   **Cash**: Manual payout recorded as a `credit` transaction.
-*   **Store Credit**: Generates a unique `store_credit_code` for the customer.
-*   **Exchange**: Links the refund value to a new `Order`.
-
----
-
-## 5. Contact Message Lifecycle (Customer Support)
-Handles public inquiries from the website.
-
-**States**:
-*   **New**: Unread message.
-*   **Read**: Staff has viewed the message.
-*   **Replied**: Staff has provided an answer (admin reply saved).
-*   **Archived**: Resolution reached; hidden from the active queue.
-
----
-
-## 6. Exchange Lifecycle (Return + New Sale)
-Exchanges are handled as two distinct events linked together for auditing.
-
-1.  **Return Path**: Original item is processed through the standard Return Lifecycle.
-2.  **Credit Path**: Instead of cash/bank refund, the amount is held as a "Temporary Credit".
-3.  **Sale Path**: A new order is created.
-4.  **Linking**: `ProductReturnController::exchange` links the new order ID to the return request.
-
----
-
-## 7. Edge Cases & Safety Rules
-
-| Scenario | System Rule |
-| :--- | :--- |
-| **Return after 30 days** | System flags as "Out of Policy" but allows staff override if permissions allow. |
-| **Partial Return of Split Batch** | The system identifies the specific `product_barcode_id` from the `OrderItem` to ensure the correct batch is incremented. |
-| **Refund Method unavailable** | Staff can pivot to `Store Credit` as a fallback. |
-| **Non-Barcode Item Return** | `ProductReturnController` throws an error. Non-barcode items are NOT returnable in the standard flow. |
-
----
-
-## 8. Examples & Data Structures
-
-### Return Item Object:
-```json
-{
-  "order_item_id": 500,
-  "product_id": 20,
-  "quantity": 1,
-  "unit_price": 1200,
-  "returned_barcode_ids": [5678],
-  "reason": "defective_product",
-  "qc_passed": true
-}
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Request: Initiated by Customer/Staff
+    Request --> Approve: Manager Validates Policy
+    Approve --> QualityCheck: Physical Inspection
+    QualityCheck --> Reject: Customer Fault
+    QualityCheck --> Process: Authorized
+    Process --> Complete: Stock Updated
+    Process --> Exchange: New Item Issued
+    Complete --> [*]
 ```
 
+### Detailed Phases
+- **Store / Request:** Return is initiated against an original order ID. Must be within the allowable return window (e.g., 14 days).
+- **Approve:** System or manager verifies the timeline and policy eligibility.
+- **Quality Check:** Crucial physical step. Is it resellable, or defective?
+- **Process & Complete:** If resellable, added back to active inventory. If defective, moved to the Defective Product Lifecycle.
+- **Exchange:** A parallel path where instead of a refund, a new order is spawned for the replacement item.
+
+### Examples
+- **Example A:** Customer returns a shirt because it's too small. It passes QA (unworn). It is returned to active stock. An exchange order is created for the larger size.
+
+### Edge Cases
+- **Returning a discounted item:** Customer bought an item at 50% off. The return value must strictly be the discounted price paid, not the current MSRP.
+- **Returning an item from a bundle:** Returning one item from a "Buy 2 Get 1 Free" deal requires complex prorated value calculations.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Returning an item multiple times. A malicious user might try to return an item online, get a refund, and then bring the physical receipt to a store to return it again.
+- **Suggested Fix (Antigravity prompt):** "Ensure the `order_items` table tracks `returned_quantity`. Add validation in the return controller: `if (requested_qty + returned_qty > ordered_qty) throw Exception`."
+
 ---
 
-## 9. Integrity Issues & Suggested Fixes
+## 2. Refund Lifecycle
 
-### Issue 1: Phantom Inventory in Cross-Store Returns
-**Description**: When a new batch is created during a cross-store return, some attributes (like custom taxes or notes) from the original batch are lost.
-**Suggested Fix**: Update `restoreInventoryForReturn` to deep-copy all `ProductBatch` metadata from the original batch ID.
+The financial counter-part to the physical return lifecycle.
 
-### Issue 2: Race Condition in Duplicate Returns
-**Description**: The check for existing returns in `ProductReturnController::store` is non-atomic.
-**Suggested Fix**: Use a `unique` composite index on `product_returns` table for `(order_id, status)` where status is not `rejected` or `cancelled`.
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> Store: Draft Refund
+    Store --> Process: Gateway/Bank API Call
+    Process --> Complete: Money Sent
+    Process --> Fail: Bank Rejection
+    Store --> Cancel: Customer Changed Mind
+```
 
-### Issue 3: Manual Refund Over-payment
-**Description**: Staff can enter a `total_refund_amount` greater than the customer's actual paid amount in the order.
-**Suggested Fix**: Add a hard validation: `refund_amount <= (order->paid_amount - order->total_refunded)`.
+### Detailed Phases
+- **Store:** The intent to refund is recorded. The amount is locked.
+- **Process:** Action taken to move the money. Could be an API call to SSLCommerz, or a manual request to the finance team to issue a bKash transfer.
+- **Complete:** Confirmation that the customer received the funds.
+- **Fail / Cancel:** The transaction didn't go through, or the customer opted for store credit instead.
 
-### Issue 4: Barcode Status Mismatch during Reject
-**Description**: If a return is rejected *after* being received, the barcode might stay in `in_warehouse` instead of moving back to `with_customer` (for the customer to pick up).
-**Suggested Fix**: In the `reject()` method, implement an automated location update to a virtual "Customer Pickup/Rejected" status.
+### Examples
+- **Example A:** A 2000 BDT refund is approved. Finance issues a bKash send money. They mark the refund as *Complete* and enter the bKash TrxID for auditing.
 
-### Issue 5: Refund Transaction Tracking
-**Description**: `RefundController` creates two transactions (Cash & Revenue Reversal) but does not link them via a single `batch_id` or parent `transaction_id`.
-**Suggested Fix**: Implement a `parent_transaction_id` in the `transactions` table to group related double-entry records.
+### Edge Cases
+- **Refund to a closed card:** The gateway attempts a refund, but the customer's credit card was cancelled. The refund fails, requiring an alternative payout method.
 
-### Issue 6: Defective Auto-Marking Ambiguity
-**Description**: If `returned_barcode_ids` is empty, the system picks the oldest available barcode. This might pick a good unit instead of the bad one.
-**Suggested Fix**: Make `returned_barcode_ids` a mandatory field in the frontend `ProductReturn` form. Prevent submission if no barcodes are selected.
+### Integrity Issues & Suggested Fixes
+- **Issue:** Issuing a refund greater than the total order value.
+- **Suggested Fix:** Implement an aggregate check across all historical refunds for a specific order. The sum of all `Refund` amounts must never exceed the `Order->grand_total`.
+
+---
+
+## 3. Contact Message Lifecycle
+
+Manages inquiries, complaints, and general support tickets submitted via the E-commerce frontend.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> New: Submitted via Web
+    New --> InProgress: Agent Assigned
+    InProgress --> Resolved: Answer Provided
+    InProgress --> Escalated: Sent to Manager
+    Escalated --> Resolved
+    Resolved --> Closed: Archived
+```
+
+### Detailed Phases
+- **Store (New):** Customer submits the contact form. Stored in the database.
+- **Update Status:** As support agents interact with the message, it moves through active states.
+- **Resolved/Closed:** The issue is dealt with.
+
+### Examples
+- **Example A:** User asks "Where is my order?" It enters as *New*. Support checks Pathao, replies with tracking link, marks as *Resolved*.
+
+### Edge Cases
+- **Spam Submissions:** Bots filling out the contact form thousands of times.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** Database bloat and slow support response times due to spam.
+- **Suggested Fix:** Implement Google reCAPTCHA v3 on the frontend contact form and rate-limit submissions by IP address on the backend controller.
+
+---
+
+## 4. Recycle Bin Lifecycle
+
+A safety net across the entire system. Instead of hard-deleting records (Orders, Products, Customers), they enter this lifecycle to prevent catastrophic accidental data loss.
+
+### Flowchart
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveRecord
+    ActiveRecord --> SoftDelete: User clicks Delete
+    SoftDelete --> RecycleBin: Hidden from normal views
+    RecycleBin --> Restore: Admin Recovers
+    Restore --> ActiveRecord
+    RecycleBin --> PermanentDelete: Cron Job (7 Days)
+    PermanentDelete --> [*]
+```
+
+### Detailed Phases
+- **Soft Delete:** A `deleted_at` timestamp is added to the record. Laravel automatically excludes it from normal queries.
+- **7-Day Recovery:** The record sits in a special "Recycle Bin" UI for administrators.
+- **Restore:** The `deleted_at` timestamp is set to null. Full recovery.
+- **Permanent Delete:** A nightly scheduled task `php artisan model:prune` permanently deletes records where `deleted_at` is older than 7 days.
+
+### Examples
+- **Example A:** An admin accidentally deletes a major product category. Instead of restoring from an SQL backup, they go to the Recycle Bin and click "Restore".
+
+### Edge Cases
+- **Cascading Soft Deletes:** Deleting a Category should logically soft-delete all child sub-categories, or orphan them. Restoring the parent must be handled carefully.
+
+### Integrity Issues & Suggested Fixes
+- **Issue:** A soft-deleted product's SKU is still technically in the database, preventing a new product from being created with the same SKU due to unique constraints.
+- **Suggested Fix:** Modify the unique constraint migration to be unique across `(sku, deleted_at)`. This allows a new active product to share a SKU with a soft-deleted one.
