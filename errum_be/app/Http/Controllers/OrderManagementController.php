@@ -258,6 +258,7 @@ class OrderManagementController extends Controller
                 $order->update([
                     'store_id' => $storeId,
                     'status' => 'assigned_to_store',
+                    'fulfillment_status' => 'pending_fulfillment', // Required for warehouse fulfillment workflow
                     'processed_by' => auth('api')->id(),
                     'metadata' => array_merge($order->metadata ?? [], [
                         'assigned_at' => now()->toISOString(),

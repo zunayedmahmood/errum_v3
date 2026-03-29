@@ -52,6 +52,11 @@ class OrderController extends Controller
             $query->where('payment_status', $request->payment_status);
         }
 
+        // Filter by fulfillment status
+        if ($request->filled('fulfillment_status')) {
+            $query->where('fulfillment_status', $request->fulfillment_status);
+        }
+
         // Filter by store
         if ($request->filled('store_id')) {
             if ($request->store_id === 'unassigned' || $request->store_id === 'null') {

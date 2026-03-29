@@ -538,7 +538,8 @@ class Order extends Model
 
     public function isPendingFulfillment(): bool
     {
-        return $this->fulfillment_status === 'pending_fulfillment';
+        return $this->fulfillment_status === 'pending_fulfillment' || 
+               ($this->needsFulfillment() && empty($this->fulfillment_status) && !$this->isFulfilled());
     }
 
     public function isFulfilled(): bool

@@ -805,4 +805,81 @@ class ReportingController extends Controller
 
         return Response::stream($callback, 200, $headers);
     }
+
+    /**
+     * Get Daily Sales Report data for POS
+     * 
+     * GET /api/reporting/daily-sales
+     * 
+     * Query Parameters:
+     * - store_id: Filter by specific store - required
+     * - date: Report date (YYYY-MM-DD) - optional, default: today
+     */
+    public function getDailySalesReport(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'store_id' => 'required|exists:stores,id',
+            'date' => 'nullable|date',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $dateStr = $request->get('date', now()->format('Y-m-d'));
+        $startDate = $dateStr . ' 00:00:00';
+        $endDate = $dateStr . ' 23:59:59';
+
+        $storeId = $request->store_id;
+        $store = \App\Models\Store::findOrFail($storeId);
+
+        // Fetch all completed payments for this store on the selected date
+        $payments = \App\Models\OrderPayment::query()
+            ->where('store_id', $storeId)
+            ->where('status', 'completed')
+            ->whereBetween('completed_at', [$startDate, $endDate])
+            ->with('paymentMethod')
+            ->get();
+
+        $totalSales = 0;
+        $cash = 0;
+        $card = 0;
+        $bkash = 0;
+        $nagad = 0;
+
+        foreach ($payments as $payment) {
+            $amount = floatval($payment->amount);
+            $totalSales += $amount;
+
+            if ($payment->paymentMethod) {
+                $methodName = strtolower($payment->paymentMethod->name);
+                
+                if (str_contains($methodName, 'cash')) {
+                    $cash += $amount;
+                } elseif (str_contains($methodName, 'card')) {
+                    $card += $amount;
+                } elseif (str_contains($methodName, 'bkash')) {
+                    $bkash += $amount;
+                } elseif (str_contains($methodName, 'nagad')) {
+                    $nagad += $amount;
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'date' => $dateStr,
+                'branch' => $store->name,
+                'total_sales' => $totalSales,
+                'cash' => $cash,
+                'card' => $card,
+                'bkash' => $bkash,
+                'nagad' => $nagad,
+            ]
+        ]);
+    }
 }
