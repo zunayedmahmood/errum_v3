@@ -107,23 +107,16 @@ What you need to know:
 ->If the observers or anything similar need to be registered, register them (see the other observers to decide if that's necessary).                                                                             
 
 
-### page responsiveness and new pages 
-read the entire frontend to understand how roles access different pages and role based page responsiveness.
-see Documentation/Rbac centralised reference.md
+### access control 
 
-we are adding this new role now:
+Remove branch manager from these pages 
 
-branch manager:
--view only (disable the edit order, add order marker, send to pathao for super admin, admin and online moderator) order list on packing panel only for that branch
--has access to orders on social-commerce/package but for only his branch
--has access to /purchase-history but for his branch only 
--full access of /pos (can use daily cash report button. this button is accessible to super admin, admin and branch manager) but for his branch only 
--full access to /accounting page. 
+/purchase-order, /vendor, all pages in /social-order except /social-order/package,
+/store-assignment, /category, /gallery, /campaigns /transaction, /accounting, /employees, /roles, /permissions
 
-These are the chnages we want for all:
--everybody will have full access to inventory pages (except report. only admins and super admin get that) and it should have information of all stores 
--everybody (except employees) have full access to extras panel (for all stores)
+grant cross store access to /returns page for branch manager.
 
-make the least possible change in backend. we've shifted role based checks and permissions to frontend.
-ONLY make the absolutely stricly necessary changes.
-These changes should be primarily frontend.
+make /campaigns, /transaction, /category, /gallery, /accounting, /employees admin and super admin only 
+
+remove the /roles /permissions pages for all (including admins and super admins)
+Update this file accordingly: Documentation/31_Mar_26 Branch_Manager_Role_Updates_and_Global_Inventory.md

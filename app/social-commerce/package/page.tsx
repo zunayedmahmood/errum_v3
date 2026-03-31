@@ -289,10 +289,10 @@ export default function WarehouseFulfillmentPage() {
       let allOrders: any[] = [];
 
       if (isRole('pos-salesman')) {
-        // POS Salesman sees local/walking/video orders
-        const response = await orderService.getPendingFulfillment({ 
-          per_page: 100, 
-          order_types: ['pos', 'video-shopping', 'walking-customer'] 
+        // POS Salesman sees pos/ecommerce/social-commerce
+        const response = await orderService.getPendingFulfillment({
+          per_page: 100,
+          order_types: ['counter', 'social_commerce', 'ecommerce']
         });
         allOrders = response.data || [];
       } else if (isRole('branch-manager')) {
