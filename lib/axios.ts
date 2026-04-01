@@ -101,9 +101,13 @@ axiosInstance.interceptors.request.use(
           // Scoping logic: 
           // If NOT a global role AND a storeId exists, inject it into all requests.
           if (!isGlobalRole && storeId && Number.isFinite(storeId)) {
-            // GET/DELETE: inject via query params
+            // GET/DELETE: inject via query params if not already present
             if (method === 'get' || method === 'delete') {
-              config.params = { ...(config.params || {}), store_id: storeId };
+              if (config.params && !Object.prototype.hasOwnProperty.call(config.params, 'store_id')) {
+                config.params = { ...config.params, store_id: storeId };
+              } else if (!config.params) {
+                config.params = { store_id: storeId };
+              }
             }
 
             // POST/PATCH/PUT: inject into body
@@ -118,19 +122,27 @@ axiosInstance.interceptors.request.use(
               } else if (typeof data === 'string') {
                 try {
                   data = JSON.parse(data);
-                  data.store_id = storeId;
+                  if (data && typeof data === 'object' && !Object.prototype.hasOwnProperty.call(data, 'store_id')) {
+                    data.store_id = storeId;
+                  }
                   config.data = JSON.stringify(data);
                 } catch {
                   // Fallback for non-JSON strings
                 }
               } else {
                 // Plane object
-                data.store_id = storeId;
+                if (data && typeof data === 'object' && !Object.prototype.hasOwnProperty.call(data, 'store_id')) {
+                  data.store_id = storeId;
+                }
                 config.data = data;
               }
               
-              // Also keep in params for safety (some backend controllers read from request query even on POST)
-              config.params = { ...(config.params || {}), store_id: storeId };
+              // Also keep in params for safety, but only if not already present
+              if (config.params && !Object.prototype.hasOwnProperty.call(config.params, 'store_id')) {
+                config.params = { ...config.params, store_id: storeId };
+              } else if (!config.params) {
+                config.params = { store_id: storeId };
+              }
             }
           }
         }
