@@ -1978,29 +1978,8 @@ export default function LookupPage() {
     }
   };
 
-      setBarcodeLoading(false);
-    }
-  };
 
   // -----------------------
-        price: options.price || 0,
-        widthMm: SHARED_LABEL_WIDTH_MM,
-        heightMm: SHARED_LABEL_HEIGHT_MM,
-        dpi: SHARED_DEFAULT_DPI,
-      });
-
-      const qz = (window as any).qz;
-      const config = qz.configs.create(printer);
-      const data = [{ type: 'pixel', format: 'base64', data: labelBase64 }];
-      await qz.print(config, data);
-
-      setPrintStatus({ loading: false, error: null, success: true });
-      setTimeout(() => setPrintStatus(s => ({ ...s, success: false })), 3000);
-    } catch (err: any) {
-      console.error("Print error:", err);
-      setPrintStatus({ loading: false, error: err.message, success: false });
-    }
-  };
 
   // -----------------------
   // Batch handlers
@@ -3298,14 +3277,14 @@ export default function LookupPage() {
                             id: batchData.batch.id,
                             productId: batchData.batch.product.id,
                             quantity: Number(
-                              batchData.batch.quantity ??
+                              (batchData.batch as any).quantity ??
                                 batchData.batch.original_quantity ??
                                 batchData.summary?.total_units ??
                                 0
                             ),
                             costPrice: Number(prices.cost ?? 0),
                             sellingPrice: Number(prices.sell ?? 0),
-                            baseCode: batchData.batch.base_code,
+                            baseCode: (batchData.batch as any).base_code,
                           };
 
                           const printerProduct: PrinterProduct = {
@@ -3596,7 +3575,6 @@ export default function LookupPage() {
             {/* Return/Exchange Modals */}
             {showReturnModal && selectedOrderForAction && (
               <ReturnProductModal
-                isOpen={showReturnModal}
                 onClose={() => setShowReturnModal(false)}
                 order={selectedOrderForAction}
                 onReturn={handleReturnSubmit}
