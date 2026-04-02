@@ -25,38 +25,38 @@ interface CartTableProps {
   vatRate?: number; // VAT percentage to calculate per-product tax
 }
 
-export default function CartTable({ 
-  items, 
-  onRemoveItem, 
-  onUpdateQuantity, 
+export default function CartTable({
+  items,
+  onRemoveItem,
+  onUpdateQuantity,
   onUpdateDiscount,
   darkMode,
   vatRate = 0
 }: CartTableProps) {
-  
+
   /**
    * Calculate proportional VAT for a specific item
    */
   const calculateItemVAT = (item: CartItem): number => {
     if (vatRate === 0) return 0;
-    
+
     const subtotal = items.reduce((sum, i) => sum + i.amount, 0);
     if (subtotal === 0) return 0;
-    
+
     const totalVAT = (subtotal * vatRate) / 100;
     const itemShare = item.amount / subtotal;
     const itemVAT = totalVAT * itemShare;
-    
+
     return itemVAT;
   };
-  
+
   /**
    * Calculate total with VAT for a specific item
    */
   const getItemTotalWithVAT = (item: CartItem): number => {
     return item.amount + calculateItemVAT(item);
   };
-  
+
   /**
    * Handle discount percentage input
    */
@@ -327,7 +327,7 @@ export default function CartTable({
               ৳{items.reduce((sum, item) => sum + item.amount, 0).toFixed(2)}
             </span>
           </div>
-          
+
           {items.some(item => item.discount > 0) && (
             <div className="flex justify-between items-center">
               <span className="text-xs text-green-600 dark:text-green-400">
@@ -338,7 +338,7 @@ export default function CartTable({
               </span>
             </div>
           )}
-          
+
           {vatRate > 0 && (
             <div className="flex justify-between items-center">
               <span className="text-xs text-blue-600 dark:text-blue-400">
@@ -349,7 +349,7 @@ export default function CartTable({
               </span>
             </div>
           )}
-          
+
           <div className="flex justify-between items-center pt-2 border-t border-gray-300 dark:border-gray-600">
             <span className="text-base font-bold text-gray-900 dark:text-white">
               Grand Total
