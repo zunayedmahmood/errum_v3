@@ -1645,8 +1645,9 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={sellingPrice}
-                            onChange={(e) => setSellingPrice(Number(e.target.value))}
+                            value={sellingPrice === 0 ? '' : sellingPrice}
+                            placeholder="0"
+                            onChange={(e) => setSellingPrice(e.target.value === '' ? 0 : Number(e.target.value))}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           />
                         </div>
@@ -1658,8 +1659,9 @@ export default function POSPage() {
                           <input
                             type="number"
                             min="1"
-                            value={quantity}
-                            onChange={(e) => setQuantity(Number(e.target.value))}
+                            value={quantity === 0 ? '' : quantity}
+                            placeholder="0"
+                            onChange={(e) => setQuantity(e.target.value === '' ? 0 : Number(e.target.value))}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                           />
                         </div>
@@ -1670,9 +1672,10 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={discountPercent}
+                            value={discountPercent === 0 ? '' : discountPercent}
+                            placeholder="0"
                             onChange={(e) => {
-                              setDiscountPercent(Number(e.target.value));
+                              setDiscountPercent(e.target.value === '' ? 0 : Number(e.target.value));
                               setDiscountAmount(0);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -1685,9 +1688,10 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={discountAmount}
+                            value={discountAmount === 0 ? '' : discountAmount}
+                            placeholder="0"
                             onChange={(e) => {
-                              setDiscountAmount(Number(e.target.value));
+                              setDiscountAmount(e.target.value === '' ? 0 : Number(e.target.value));
                               setDiscountPercent(0);
                             }}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -1886,8 +1890,9 @@ export default function POSPage() {
                       </label>
                       <input
                         type="number"
-                        value={transportCost}
-                        onChange={(e) => setTransportCost(Number(e.target.value))}
+                        value={transportCost === 0 ? '' : transportCost}
+                        placeholder="0"
+                        onChange={(e) => setTransportCost(e.target.value === '' ? 0 : Number(e.target.value))}
                         className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                       />
                     </div>
@@ -1925,8 +1930,9 @@ export default function POSPage() {
                                 type="number"
                                 min={2}
                                 max={24}
-                                value={installmentCount}
-                                onChange={(e) => setInstallmentCount(Number(e.target.value))}
+                                value={installmentCount === 0 ? '' : installmentCount}
+                                placeholder="0"
+                                onChange={(e) => setInstallmentCount(e.target.value === '' ? 0 : Number(e.target.value))}
                                 className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                               />
                             </div>
@@ -1976,8 +1982,9 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={cashPaid}
-                            onChange={(e) => setCashPaid(Number(e.target.value))}
+                            value={cashPaid === 0 ? '' : cashPaid}
+                            placeholder="0"
+                            onChange={(e) => setCashPaid(e.target.value === '' ? 0 : Number(e.target.value))}
                             disabled={isProcessing || isInstallment}
                             className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           />
@@ -1988,8 +1995,9 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={cardPaid}
-                            onChange={(e) => setCardPaid(Number(e.target.value))}
+                            value={cardPaid === 0 ? '' : cardPaid}
+                            placeholder="0"
+                            onChange={(e) => setCardPaid(e.target.value === '' ? 0 : Number(e.target.value))}
                             disabled={isProcessing || isInstallment}
                             className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           />
@@ -2000,8 +2008,9 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={bkashPaid}
-                            onChange={(e) => setBkashPaid(Number(e.target.value))}
+                            value={bkashPaid === 0 ? '' : bkashPaid}
+                            placeholder="0"
+                            onChange={(e) => setBkashPaid(e.target.value === '' ? 0 : Number(e.target.value))}
                             disabled={isProcessing || isInstallment}
                             className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           />
@@ -2012,8 +2021,9 @@ export default function POSPage() {
                           </label>
                           <input
                             type="number"
-                            value={nagadPaid}
-                            onChange={(e) => setNagadPaid(Number(e.target.value))}
+                            value={nagadPaid === 0 ? '' : nagadPaid}
+                            placeholder="0"
+                            onChange={(e) => setNagadPaid(e.target.value === '' ? 0 : Number(e.target.value))}
                             disabled={isProcessing || isInstallment}
                             className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                           />

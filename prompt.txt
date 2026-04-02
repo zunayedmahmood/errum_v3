@@ -133,35 +133,12 @@ identify the issues and only make strictly necessary changes.
 make sure the reserved_product system is aware of the changes.
 
 
-### copying exchange logic:
+### misc errors
 
-the exchange logic in /lookup page currently has a major drawback. It doesn't directly carry out the exchange.
-See purchase-history page. it currently has a very robust panels for both return adn exchange. we want that exact same logic and UI in /lookup page.
-But, there may be some issue in that full process. the exchange logic in /lookup is at least returning properly. make sure the the final output in /lookup page is robust and without any integrity issue.
+/pos page has many number input fileds for transport cost, cash, bkash, card, discount etc.
+these have a frontend limitation where they can''t have empty value. so, if we don't enter any value, it shows 0. 
 
-currently, for return in a different store, we are creating a new batch by fully copying the batch information.
-we want a small change:
-the new batch will have the batch id like this: POid-RTN-RTNid (PO is purchase id of the original batch, RTNid is return id, RTN is a acronym)
-
-currently, the reserved_product stock, still misses some changes in the stock from return-exchange.
-make sure all the process are well observed.
-
-also, Implement this change:
-Location: components/lookup/ReturnExchangeFromOrder.tsx Issue: The "Auto-Approve" feature in the Lookup page executes 5 separate API calls in a sequence.
-
-setLoadingStep('Creating return...');
-await productReturnService.create(...);
-setLoadingStep('Passed Quality Check...');
-await productReturnService.update(...);
-setLoadingStep('Approving return...');
-await productReturnService.approve(...);
-setLoadingStep('Processing inventory...');
-await productReturnService.process(...);
-setLoadingStep('Completing return...');
-await productReturnService.complete(...);
-Impact: If the network fails at step 3, the return is "Created" and "Quality Checked" but not "Approved". The user sees an error, but the data is partially modified. Fix: Create a single POST /api/returns/quick-complete endpoint on the backend that handles the entire transaction atomically.
-
-Since the system is in production, we can not afford to break anything. so, please be very careful. 
-Since, testing confirmed that return and exchange was mostly working except few availability issues, avoid doing any drastic changes to the already partially working process.
+That's a desired feature. however, this creates an issue when we start typing, it shows 012, 01 etc. we'd need something typed in before we can delete the front 0.
+This feature needs a polishing. when we start typing, remove the 0, and let the user type the number. if the user deletes the number entirely, it should show 0 again.
+make this smooth and polished.
 identify the issues and only make strictly necessary changes.
-make sure the reserved_product system is aware of the changes.

@@ -170,14 +170,20 @@ export default function CartTable({
                     </button>
                     <input
                       type="number"
-                      value={item.qty}
+                      value={item.qty === 0 ? '' : item.qty}
+                      placeholder="0"
                       onChange={(e) => {
-                        const newQty = parseInt(e.target.value) || 1;
-                        if (newQty > 0 && newQty <= item.availableQty) {
-                          onUpdateQuantity(item.id, newQty);
+                        const val = e.target.value;
+                        if (val === '') {
+                          onUpdateQuantity(item.id, 0); // Allow temporary 0/empty for typing
+                        } else {
+                          const newQty = parseInt(val);
+                          if (!isNaN(newQty) && newQty >= 0 && newQty <= item.availableQty) {
+                            onUpdateQuantity(item.id, newQty);
+                          }
                         }
                       }}
-                      min="1"
+                      min="0"
                       max={item.availableQty}
                       className="w-16 text-center px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                     />
