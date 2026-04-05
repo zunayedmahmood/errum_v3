@@ -381,7 +381,7 @@ function ViewInventoryPageContent() {
         groups[groupKey] = {
           groupKey,
           sku: displaySku,
-          productName: item.product_name || 'Unnamed Product',
+          productName: item.base_name || item.product_name || 'Unnamed Product',
           totalStock: 0,
           variations: [],
           expanded: false,

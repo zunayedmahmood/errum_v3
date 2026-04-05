@@ -15,6 +15,7 @@ export interface Store {
 export interface GlobalInventoryItem {
   product_id: number;
   product_name: string;
+  base_name: string;
   sku: string;
   total_quantity: number;
   stores_count: number;

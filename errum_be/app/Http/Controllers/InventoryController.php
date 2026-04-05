@@ -65,6 +65,7 @@ class InventoryController extends Controller
                     return [
                         'product_id' => $product->id,
                         'product_name' => $product->name,
+                        'base_name' => $product->base_name,
                         'sku' => $product->sku,
                         'total_quantity' => $totalQuantity,
                         'available_quantity' => $availableQuantity,

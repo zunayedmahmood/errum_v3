@@ -171,13 +171,13 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
           // Fetch full batch details with barcodes
           const response = await batchService.getBatch(parseInt(currentItem.batch_id));
           const batch = response.data;
-          
+
           // Filter to count only active barcodes
           if (batch.barcode && Array.isArray(batch.barcode)) {
             const activeBarcodes = batch.barcode.filter(
               (barcode: any) => barcode.is_active === true
             );
-            
+
             const filteredBatch = {
               ...batch,
               quantity: activeBarcodes.length, // Update to active count
@@ -185,7 +185,7 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
               active_barcodes_count: activeBarcodes.length,
               barcodes: activeBarcodes, // Only active barcodes
             };
-            
+
             setBatchData(filteredBatch);
           } else {
             setBatchData(batch);
@@ -199,7 +199,7 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
         setBatchData(null);
       }
     };
-    
+
     fetchBatchDetails();
   }, [currentItem.batch_id]);
 
@@ -582,11 +582,10 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                   setAddMode('batch');
                   setScanError(null);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  addMode === 'batch'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${addMode === 'batch'
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
+                  }`}
               >
                 Select Batch
               </button>
@@ -597,11 +596,10 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                   setScanError(null);
                   setTimeout(() => scanInputRef.current?.focus(), 0);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1 ${
-                  addMode === 'barcode'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors flex items-center gap-1 ${addMode === 'barcode'
                     ? 'bg-indigo-600 text-white border-indigo-600'
                     : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600'
-                }`}
+                  }`}
               >
                 <Scan className="w-3.5 h-3.5" /> Scan Barcodes
               </button>
@@ -734,10 +732,10 @@ const CreateDispatchModal: React.FC<CreateDispatchModalProps> = ({
                     {batchLoading
                       ? 'Loading batches...'
                       : !formData.source_store_id
-                      ? 'Select source store first'
-                      : availableBatches.length === 0
-                      ? 'No available batches with active items'
-                      : 'Select a batch'}
+                        ? 'Select source store first'
+                        : availableBatches.length === 0
+                          ? 'No available batches with active items'
+                          : 'Select a batch'}
                   </option>
                   {availableBatches.map((batch) => (
                     <option key={batch.id} value={batch.id}>
