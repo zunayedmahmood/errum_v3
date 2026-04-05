@@ -200,6 +200,36 @@ class OrderManagementService {
       'Failed to assign order to store'
     );
   }
+
+  /**
+   * Revert order assignment back to pending_assignment
+   */
+  async revertAssignment(orderId: number): Promise<any> {
+    try {
+      console.log('🔄 Reverting order assignment for:', orderId);
+      const response = await axiosInstance.post(`/order-management/orders/${orderId}/revert-assignment`);
+      console.log('✅ Order assignment reverted successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to revert order assignment:', error);
+      throw new Error(error.response?.data?.message || 'Failed to revert order assignment');
+    }
+  }
+
+  /**
+   * Mark order as delivered manually
+   */
+  async markAsDelivered(orderId: number): Promise<any> {
+    try {
+      console.log('📦 Marking order as delivered:', orderId);
+      const response = await axiosInstance.post(`/order-management/orders/${orderId}/mark-as-delivered`);
+      console.log('✅ Order marked as delivered successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Failed to mark order as delivered:', error);
+      throw new Error(error.response?.data?.message || 'Failed to mark order as delivered');
+    }
+  }
 }
 
 

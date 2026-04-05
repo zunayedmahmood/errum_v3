@@ -332,6 +332,12 @@ Route::middleware('auth:api')->group(function () {
         
         // Assign order to a specific store
         Route::post('/orders/{orderId}/assign-store', [\App\Http\Controllers\OrderManagementController::class, 'assignOrderToStore']);
+
+        // Revert order assignment back to pending_assignment
+        Route::post('/orders/{orderId}/revert-assignment', [\App\Http\Controllers\OrderManagementController::class, 'revertAssignment']);
+        
+        // Mark order as delivered manually
+        Route::post('/orders/{orderId}/mark-as-delivered', [\App\Http\Controllers\OrderManagementController::class, 'markAsDelivered']);
     });
 
     // Store Fulfillment (Store Employee) - Dashboard & Barcode Scanning
@@ -391,6 +397,55 @@ Route::middleware('auth:api')->group(function () {
             
             // Activity tracking
             Route::get('/activity-log', [EmployeeController::class, 'getActivityLog']);
+        });
+    });
+
+    // ============================================
+    // HRM & ATTENDANCE MANAGEMENT ROUTES
+    // Store policies, holidays, schedules, and attendance tracking
+    // ============================================
+    Route::prefix('hrm')->group(function () {
+        // Attendance & Policy (Manager/Admin)
+        Route::prefix('attendance')->group(function () {
+            Route::post('/policy', [\App\Http\Controllers\AttendanceController::class, 'upsertStorePolicy']);
+            Route::get('/policy/{storeId}', [\App\Http\Controllers\AttendanceController::class, 'getStorePolicy']);
+            
+            Route::post('/holidays', [\App\Http\Controllers\AttendanceController::class, 'declareHoliday']);
+            Route::get('/holidays', [\App\Http\Controllers\AttendanceController::class, 'listHolidays']);
+            
+            Route::post('/schedules', [\App\Http\Controllers\AttendanceController::class, 'assignSchedule']);
+            
+            Route::post('/mark', [\App\Http\Controllers\AttendanceController::class, 'markAttendance']);
+            Route::put('/{id}', [\App\Http\Controllers\AttendanceController::class, 'updateAttendance']);
+            Route::get('/history/{id}', [\App\Http\Controllers\AttendanceController::class, 'getAttendanceHistory']);
+            
+            Route::get('/report/range', [\App\Http\Controllers\AttendanceController::class, 'getRangeReport']);
+            Route::get('/report/day', [\App\Http\Controllers\AttendanceController::class, 'getDayReport']);
+            Route::get('/report/today', [\App\Http\Controllers\AttendanceController::class, 'getTodayReport']);
+            Route::get('/report/present-today', [\App\Http\Controllers\AttendanceController::class, 'getPresentToday']);
+            
+            // Overtime
+            Route::post('/overtime', [\App\Http\Controllers\AttendanceController::class, 'markOvertime']);
+            Route::put('/overtime/{id}', [\App\Http\Controllers\AttendanceController::class, 'updateOvertime']);
+            Route::get('/overtime/history/{id}', [\App\Http\Controllers\AttendanceController::class, 'getOvertimeHistory']);
+            Route::get('/overtime/report', [\App\Http\Controllers\AttendanceController::class, 'getEmployeeOvertimeReport']);
+        });
+
+        // Sales Target Management (Manager/Admin)
+        Route::prefix('sales-targets')->group(function () {
+            Route::get('/', [\App\Http\Controllers\SalesTargetController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\SalesTargetController::class, 'setTarget']);
+            Route::get('/performance', [\App\Http\Controllers\SalesTargetController::class, 'getDailyPerformance']);
+            Route::get('/report', [\App\Http\Controllers\SalesTargetController::class, 'getTargetReport']);
+            Route::get('/history/{employeeId}', [\App\Http\Controllers\SalesTargetController::class, 'getTargetHistory']);
+        });
+
+        // Employee Self-Service Panel
+        Route::prefix('my')->group(function () {
+            Route::get('/attendance', [\App\Http\Controllers\EmployeePanelController::class, 'getMyAttendance']);
+            Route::get('/overtime', [\App\Http\Controllers\EmployeePanelController::class, 'getMyOvertime']);
+            Route::get('/rewards-fines', [\App\Http\Controllers\EmployeePanelController::class, 'getMyRewardsFines']);
+            Route::get('/performance', [\App\Http\Controllers\EmployeePanelController::class, 'getMyPerformance']);
         });
     });
 

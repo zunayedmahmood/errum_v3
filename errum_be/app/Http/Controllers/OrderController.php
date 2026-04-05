@@ -156,7 +156,7 @@ class OrderController extends Controller
         $order = Order::with([
             'customer',
             'store',
-            'items.product',
+            'items.product.reservedProduct',
             'items.batch',
             'items.barcode',
             'payments.paymentMethod',
@@ -944,47 +944,45 @@ class OrderController extends Controller
                 $product = Product::findOrFail($request->product_id);
                 $quantity = $request->quantity;
                 
-                // If batch_id provided, use it. Otherwise, find oldest batch with stock at this store
+                // 1. ALWAYS verify global available inventory first
+                $reserved = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
+                $availableGlobal = $reserved ? $reserved->available_inventory : 0;
+                
+                if ($availableGlobal < $quantity) {
+                    throw new \Exception("Insufficient global stock for product '{$product->name}'. Available: {$availableGlobal}, requested: {$quantity}");
+                }
+
+                $batch = null;
+                // 2. Optional: Select a batch if possible (prioritize the order's store if set, else any batch)
+                // This is a "soft" selection - even if no batch is found here, we allow adding the item
+                // because fulfillment scanning will eventually pick a batch at the branch.
                 if ($request->filled('batch_id')) {
-                    $batch = ProductBatch::findOrFail($request->batch_id);
-                    
-                    // Validate batch belongs to this store
-                    if ($batch->store_id != $order->store_id) {
-                        throw new \Exception("Selected batch is not available at order's store");
-                    }
-                    
-                    // Validate batch has sufficient stock
-                    if ($batch->quantity < $quantity) {
-                        throw new \Exception("Insufficient stock in selected batch. Available: {$batch->quantity}");
+                    $batch = ProductBatch::find($request->batch_id);
+                    // Use it even if it's from another store, but respect its quantity if selected explicitly
+                    if ($batch && $batch->quantity < $quantity) {
+                        Log::warning("Manually selected batch {$batch->id} has less stock than requested. Proceeding as global assignment.");
                     }
                 } else {
-                    // Auto-select oldest batch with sufficient stock (FIFO)
-                    $batch = ProductBatch::where('product_id', $product->id)
-                        ->where('store_id', $order->store_id)
+                    // Optimized batch selection: try current store first (FIFO), else any store (FIFO)
+                    $batchQuery = ProductBatch::where('product_id', $product->id)
                         ->where('quantity', '>=', $quantity)
-                        ->where('expiry_date', '>', now())  // Not expired
-                        ->first();
-                }
-                
-                if (!$batch && $order->store_id) {
-                    throw new \Exception("No batch available with sufficient stock ({$quantity} units) at this store");
-                }
-
-                // If we still don't have a batch (e.g. pending assignment), allow adding via product_id ONLY
-                // This is specifically for online orders that haven't been assigned to a store yet.
-                if (!$batch) {
-                    // Check global stock availability strictly
-                    $reserved = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
-                    $available = $reserved ? $reserved->available_inventory : 0;
+                        ->where('availability', true)
+                        ->where(function($q) {
+                            $q->whereNull('expiry_date')->orWhere('expiry_date', '>', now());
+                        })
+                        ->orderBy('expiry_date', 'asc');
                     
-                    if ($available < $quantity) {
-                        throw new \Exception("Insufficient global stock for product '{$product->name}'. Available: {$available}, requested: {$quantity}");
+                    if ($order->store_id) {
+                        $batch = (clone $batchQuery)->where('store_id', $order->store_id)->first() ?: $batchQuery->first();
+                    } else {
+                        $batch = $batchQuery->first();
                     }
+                }
 
-                    Log::info("Adding unassigned item to order {$order->id}", [
-                        'product_id' => $product->id,
-                        'available_global' => $available
-                    ]);
+                if ($batch) {
+                    Log::info("Auto-selected batch {$batch->id} for added item in order {$order->id}");
+                } else {
+                    Log::info("Adding item to order {$order->id} without pre-assigned batch (will be assigned at fulfillment)");
                 }
                 
                 // Use provided price or batch price or product base price
@@ -1116,21 +1114,26 @@ class OrderController extends Controller
         DB::beginTransaction();
         try {
             if ($request->filled('quantity')) {
-                // Validate stock
-                if ($item->batch) {
-                    if ($item->batch->quantity < $request->quantity) {
-                        throw new \Exception("Insufficient stock in assigned batch. Available: {$item->batch->quantity}");
-                    }
-                } else {
-                    // Fallback for unassigned items: Check global availability
-                    $reserved = \App\Models\ReservedProduct::where('product_id', $item->product_id)->first();
+                $newQuantity = $request->quantity;
+                $diff = $newQuantity - $item->quantity;
+
+                // For increases, validate global available inventory
+                if ($diff > 0) {
+                    $reserved = \App\Models\ReservedProduct::where('product_id', $item->product_id)->lockForUpdate()->first();
                     $available = $reserved ? $reserved->available_inventory : 0;
                     
-                    if ($available < $request->quantity) {
-                        throw new \Exception("Requested quantity exceeds global available inventory. Available: {$available}");
+                    if ($available < $diff) {
+                        throw new \Exception("Insufficient global stock to increase quantity for '{$item->product_name}'. Available: {$available}, needed: {$diff}");
                     }
                 }
-                $item->updateQuantity($request->quantity);
+
+                // Recalculate tax for the new quantity
+                $batch = $item->batch;
+                $taxPercentage = $batch ? ($batch->tax_percentage ?? 0) : 0;
+                $unitPrice = $request->unit_price ?? $item->unit_price;
+                $item->tax_amount = $this->calculateTax($unitPrice, $newQuantity, $taxPercentage)['total_tax'];
+                
+                $item->updateQuantity($newQuantity);
             }
 
             if ($request->filled('unit_price')) {
@@ -1645,6 +1648,7 @@ class OrderController extends Controller
                     'barcode_id' => $item->product_barcode_id,
                     'barcode' => $item->barcode?->barcode,
                     'quantity' => $item->quantity,
+                    'global_available' => $item->product?->reservedProduct?->available_inventory ?? 0,
                     'unit_price' => number_format((float)$item->unit_price, 2),
                     'discount_amount' => number_format((float)$item->discount_amount, 2),
                     'tax_amount' => number_format((float)$item->tax_amount, 2),

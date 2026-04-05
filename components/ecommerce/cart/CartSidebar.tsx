@@ -24,7 +24,10 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const deliveryCharge = checkoutService.calculateDeliveryCharge('Dhaka');
   const total = subtotal + deliveryCharge;
 
+  const isAnyOverStock = cart.some(item => typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity);
+
   const handleCheckout = () => {
+    if (isAnyOverStock) return;
     router.push('/e-commerce/checkout');
     onClose();
   };
@@ -141,7 +144,8 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
             <div className="grid grid-cols-1 gap-3">
               <button
                 onClick={handleCheckout}
-                className="w-full py-4 rounded-2xl font-bold bg-[var(--gold)] text-white shadow-[0_10px_30px_rgba(176,124,58,0.2)] transition-all hover:bg-[#9a6b2e] active:scale-[0.98]"
+                disabled={isAnyOverStock}
+                className="w-full py-4 rounded-2xl font-bold bg-[var(--gold)] text-white shadow-[0_10px_30px_rgba(176,124,58,0.2)] transition-all hover:bg-[#9a6b2e] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ fontFamily: "'Jost', sans-serif" }}
               >
                 PROCEED TO CHECKOUT

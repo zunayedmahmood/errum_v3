@@ -14,6 +14,7 @@ interface CartItemProps {
     image?: string;
     price: string | number;
     quantity: number;
+    maxQuantity?: number;
     sku?: string;
     color?: string;
     size?: string;
@@ -173,6 +174,14 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
             {item.sku && (
               <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.42)' }}>SKU: {item.sku}</p>
             )}
+
+            {/* Stock Warning */}
+            {typeof item.maxQuantity === 'number' && item.quantity > item.maxQuantity && (
+              <p className="text-[10px] mt-1 font-bold text-rose-500 uppercase tracking-tighter">Insufficient stock ({item.maxQuantity} avail.)</p>
+            )}
+            {typeof item.maxQuantity === 'number' && item.maxQuantity > 0 && item.maxQuantity < 5 && (
+               <p className="text-[10px] mt-1 font-medium text-orange-400 opacity-80">Only {item.maxQuantity} left</p>
+            )}
           </div>
           <button
             onClick={handleRemove}
@@ -222,7 +231,7 @@ export default function CartItem({ item, onQuantityChange, onRemove, isUpdating:
             />
             <button
               onClick={() => handleQuantityChange(1)}
-              disabled={isUpdating}
+              disabled={isUpdating || (typeof item.maxQuantity === 'number' && item.quantity >= item.maxQuantity)}
               className="p-1.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: 'rgba(255,255,255,0.75)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}

@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   RotateCcw,
   Tag,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -132,6 +133,17 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { icon: History, label: 'Activity Log', href: '/activity-logs' },
     { icon: CreditCard, label: 'Transaction', href: '/transaction' },
     { icon: CreditCard, label: 'Accounting', href: '/accounting' },
+    {
+      icon: Users,
+      label: 'Human Resources (HRM)',
+      subMenu: [
+        { label: 'Employee Portal', href: '/hrm/my' },
+        { label: 'Branch Management', href: '/hrm/branch' },
+        { label: 'Attendance Logs', href: '/hrm/attendance' },
+        { label: 'Sales Targets', href: '/hrm/sales-targets' },
+        { label: 'Rewards & Fines', href: '/hrm/rewards-fines' },
+      ],
+    },
     { icon: CreditCard, label: 'Employee Management', href: '/employees' },
 
 

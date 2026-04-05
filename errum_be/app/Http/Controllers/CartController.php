@@ -39,8 +39,11 @@ class CartController extends Controller
                 'success' => true,
                 'data' => [
                     'cart_items' => $cartItems->map(function ($item) {
-                        // Get current stock and price from batches
+                        // ✅ Use available_inventory from reserved_products (total stock - reservations)
+                        $reservedRow = \App\Models\ReservedProduct::where('product_id', $item->product->id)->first();
                         $totalStock = $item->product->batches->sum('quantity');
+                        $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
+
                         $currentBatch = $item->product->batches->first();
                         $currentPrice = $currentBatch ? $currentBatch->sell_price : $item->unit_price;
                         
@@ -55,7 +58,8 @@ class CartController extends Controller
                                 'images' => array_slice($this->mergedActiveImages($item->product, ['id','url','is_primary']), 0, 1),
                                 'category' => $item->product->category->name ?? null,
                                 'stock_quantity' => $totalStock,
-                                'in_stock' => $totalStock > 0,
+                                'available_inventory' => $availableInventory,
+                                'in_stock' => $availableInventory > 0,
                             ],
                             'variant_options' => $item->variant_options,
                             'quantity' => $item->quantity,
@@ -119,13 +123,15 @@ class CartController extends Controller
                 ], 400);
             }
 
-            // Get available stock from batches (ERP manages stock via ProductBatch)
+            // ✅ Check available inventory (total stock - reservations)
+            $reservedRow = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
             $totalStock = $product->batches->sum('quantity');
+            $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
             
-            if ($totalStock < $request->quantity) {
+            if ($availableInventory < $request->quantity) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient stock. Available: ' . $totalStock,
+                    'message' => 'Insufficient stock. Available: ' . $availableInventory,
                 ], 400);
             }
             
@@ -164,12 +170,15 @@ class CartController extends Controller
                 // Update existing cart item
                 $newQuantity = $existingCartItem->quantity + $request->quantity;
                 
-                // Re-check stock availability
+                // Re-check available inventory
+                $reservedRow = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
                 $totalStock = $product->batches->sum('quantity');
-                if ($newQuantity > $totalStock) {
+                $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
+                
+                if ($newQuantity > $availableInventory) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Total quantity exceeds available stock. Current in cart: ' . $existingCartItem->quantity . ', Available: ' . $totalStock,
+                        'message' => 'Total quantity exceeds available stock. Current in cart: ' . $existingCartItem->quantity . ', Available: ' . $availableInventory,
                     ], 400);
                 }
 
@@ -260,12 +269,15 @@ class CartController extends Controller
                 $q->active()->available();
             }])->findOrFail($cartItem->product_id);
 
-            // Check stock availability from batches
+            // Check available inventory (total stock - reservations)
+            $reservedRow = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
             $totalStock = $product->batches->sum('quantity');
-            if ($totalStock < $request->quantity) {
+            $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
+            
+            if ($availableInventory < $request->quantity) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient stock. Available: ' . $totalStock,
+                    'message' => 'Insufficient stock. Available: ' . $availableInventory,
                 ], 400);
             }
 
@@ -393,12 +405,15 @@ class CartController extends Controller
                 $q->active()->available();
             }])->findOrFail($cartItem->product_id);
 
-            // Check stock availability from batches
+            // Check available inventory (total stock - reservations)
+            $reservedRow = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
             $totalStock = $product->batches->sum('quantity');
-            if ($totalStock < $cartItem->quantity) {
+            $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
+
+            if ($availableInventory < $cartItem->quantity) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient stock. Available: ' . $totalStock,
+                    'message' => 'Insufficient stock. Available: ' . $availableInventory,
                 ], 400);
             }
             
@@ -460,7 +475,8 @@ class CartController extends Controller
                                 'images' => array_slice($this->mergedActiveImages($item->product, ['id','url','is_primary']), 0, 1),
                                 'category' => $item->product->category->name ?? null,
                                 'stock_quantity' => $totalStock,
-                                'in_stock' => $totalStock > 0,
+                                'available_inventory' => $availableInventory,
+                                'in_stock' => $availableInventory > 0,
                                 'price_changed' => $item->unit_price != $currentPrice,
                             ],
                             'quantity' => $item->quantity,
@@ -555,14 +571,17 @@ class CartController extends Controller
                     continue;
                 }
 
-                // Check stock from batches
+                // Check available inventory (total stock - reservations)
+                $reservedRow = \App\Models\ReservedProduct::where('product_id', $product->id)->first();
                 $totalStock = $product->batches->sum('quantity');
-                if ($totalStock < $item->quantity) {
+                $availableInventory = $reservedRow ? (int) $reservedRow->available_inventory : $totalStock;
+
+                if ($availableInventory < $item->quantity) {
                     $issues[] = [
                         'item_id' => $item->id,
                         'product_name' => $product->name,
-                        'issue' => 'Insufficient stock. Available: ' . $totalStock,
-                        'available_quantity' => $totalStock,
+                        'issue' => 'Insufficient stock. Available: ' . $availableInventory,
+                        'available_quantity' => $availableInventory,
                     ];
                     continue;
                 }

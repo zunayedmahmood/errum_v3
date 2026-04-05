@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Package, MapPin, CreditCard, ShoppingBag, AlertCircle, Loader2, ChevronRight, Plus, Edit2, Trash2, CheckCircle } from 'lucide-react';
 import Navigation from '@/components/ecommerce/Navigation';
@@ -12,6 +12,7 @@ import guestCheckoutService, { GuestPaymentMethod } from '@/services/guestChecko
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // State
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
@@ -95,6 +96,26 @@ export default function CheckoutPage() {
     const cleaned = phone.replace(/\D/g, '');
     return /^(?:880|0)?1[3-9]\d{8}$/.test(cleaned);
   };
+
+  // ✅ NEW: Handle payment errors from URL
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      switch (errorParam) {
+        case 'payment_failed':
+          setError('Payment failed. Please try again or use a different method.');
+          break;
+        case 'payment_cancelled':
+          setError('Payment was cancelled. You can try again when you are ready.');
+          break;
+        case 'payment_processing_error':
+          setError('An error occurred while processing your payment. Please contact support if the amount was deducted.');
+          break;
+        default:
+          setError('An unexpected payment error occurred.');
+      }
+    }
+  }, [searchParams]);
 
   // ✅ FIXED: Load selected items directly from backend
   useEffect(() => {
@@ -936,7 +957,7 @@ export default function CheckoutPage() {
                 <button
                   onClick={handleGuestPlaceOrder}
                   disabled={isProcessing}
-                  className="w-full mt-5 bg-neutral-900 hover:bg-neutral-800 text-white font-semibold py-3 rounded-xl disabled:opacity-60"
+                  className="w-full mt-5 bg-[var(--gold)] hover:bg-[#9a6b2e] text-white font-semibold py-3 rounded-xl disabled:opacity-60"
                 >
                   {isProcessing ? 'Processing…' : `Place Order – ৳${summary.total_amount.toFixed(0)}`}
                 </button>
@@ -1482,7 +1503,7 @@ export default function CheckoutPage() {
                 <button
                   onClick={handlePlaceOrder}
                   disabled={isProcessing}
-                  className="w-full bg-neutral-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full bg-[var(--gold)] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#9a6b2e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
                     <>

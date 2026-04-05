@@ -9,7 +9,7 @@ import checkoutService from '@/services/checkoutService';
 
 export default function CartPage() {
   const router = useRouter();
-  
+
   // State
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function CartPage() {
     } catch (err: any) {
       console.error('❌ Error fetching cart:', err);
       setError(err.message || 'Failed to load cart');
-      
+
       if (err.message?.includes('401') || err.message?.includes('Unauthenticated')) {
         // If token expired, fall back to guest cart (localStorage)
         localStorage.removeItem('auth_token');
@@ -63,7 +63,7 @@ export default function CartPage() {
 
   const toggleSelectAll = () => {
     if (!cart?.cart_items) return;
-    
+
     if (selectedItems.size === cart.cart_items.length) {
       setSelectedItems(new Set());
     } else {
@@ -85,7 +85,7 @@ export default function CartPage() {
     if (newQuantity < 1) return;
 
     setIsUpdating(prev => new Set(prev).add(cartItemId));
-    
+
     try {
       await cartService.updateQuantity(cartItemId, { quantity: newQuantity });
       await fetchCart();
@@ -105,16 +105,16 @@ export default function CartPage() {
     if (!confirm('Are you sure you want to remove this item?')) return;
 
     setIsUpdating(prev => new Set(prev).add(cartItemId));
-    
+
     try {
       await cartService.removeFromCart(cartItemId);
-      
+
       setSelectedItems(prev => {
         const next = new Set(prev);
         next.delete(cartItemId);
         return next;
       });
-      
+
       await fetchCart();
     } catch (err: any) {
       console.error('❌ Error removing item:', err);
@@ -130,12 +130,12 @@ export default function CartPage() {
 
   const handleDeleteSelected = async () => {
     if (selectedItems.size === 0) return;
-    
+
     if (!confirm(`Are you sure you want to remove ${selectedItems.size} item(s)?`)) return;
 
     const itemsToDelete = Array.from(selectedItems);
     setIsUpdating(new Set(itemsToDelete));
-    
+
     try {
       await Promise.all(itemsToDelete.map(id => cartService.removeFromCart(id)));
       setSelectedItems(new Set());
@@ -166,12 +166,12 @@ export default function CartPage() {
 
   const getSelectedTotal = (): number => {
     if (!cart?.cart_items) return 0;
-    
+
     return cart.cart_items
       .filter(item => selectedItems.has(item.id))
       .reduce((total, item) => {
-        const itemTotal = typeof item.total_price === 'string' 
-          ? parseFloat(item.total_price) 
+        const itemTotal = typeof item.total_price === 'string'
+          ? parseFloat(item.total_price)
           : item.total_price;
         return total + itemTotal;
       }, 0);
@@ -181,6 +181,10 @@ export default function CartPage() {
   const subtotal = getSelectedTotal();
   const shippingFee = checkoutService.calculateDeliveryCharge('Dhaka');
   const total = subtotal + shippingFee;
+
+  const isAnyItemSelectedOverStock = cart?.cart_items
+    ?.filter(item => selectedItems.has(item.id))
+    .some(item => (item.product.available_inventory ?? 0) < item.quantity);
 
   // ✅ CRITICAL FIX: Synchronous localStorage save before navigation
   const handleProceedToCheckout = async () => {
@@ -192,7 +196,7 @@ export default function CartPage() {
     try {
       // Validate cart before checkout
       const validation = await cartService.validateCart();
-      
+
       if (!validation.is_valid) {
         const issues = validation.issues.map(issue => issue.issue).join('\n');
         alert(`Cart validation failed:\n${issues}`);
@@ -203,10 +207,10 @@ export default function CartPage() {
       // ✅ CRITICAL: Save to localStorage SYNCHRONOUSLY before ANY navigation
       const selectedItemsArray = Array.from(selectedItems);
       localStorage.setItem('checkout-selected-items', JSON.stringify(selectedItemsArray));
-      
+
       // ✅ Force a small delay to ensure localStorage write completes
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Verify save succeeded
       const saved = localStorage.getItem('checkout-selected-items');
       if (!saved) {
@@ -282,7 +286,7 @@ export default function CartPage() {
     <div className="ec-root ec-darkify min-h-screen">
       <Navigation />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        
+
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Cart Items */}
@@ -336,11 +340,11 @@ export default function CartPage() {
             {/* Cart Items */}
             <div className="space-y-4 mt-6">
               {cart.cart_items.map((item: CartItem) => {
-                const price = typeof item.unit_price === 'string' 
-                  ? parseFloat(item.unit_price) 
+                const price = typeof item.unit_price === 'string'
+                  ? parseFloat(item.unit_price)
                   : item.unit_price;
-                const itemTotal = typeof item.total_price === 'string' 
-                  ? parseFloat(item.total_price) 
+                const itemTotal = typeof item.total_price === 'string'
+                  ? parseFloat(item.total_price)
                   : item.total_price;
                 const isItemUpdating = isUpdating.has(item.id);
                 const productImage =
@@ -350,11 +354,10 @@ export default function CartPage() {
                   '/placeholder-product.png';
 
                 return (
-                  <div 
-                    key={item.id} 
-                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 py-6 border-b items-center transition-opacity ${
-                      isItemUpdating ? 'opacity-50' : 'opacity-100'
-                    }`}
+                  <div
+                    key={item.id}
+                    className={`grid grid-cols-1 md:grid-cols-12 gap-4 py-6 border-b items-center transition-opacity ${isItemUpdating ? 'opacity-50' : 'opacity-100'
+                      }`}
                   >
                     {/* Checkbox */}
                     <div className="md:col-span-1 flex justify-end md:justify-start">
@@ -376,8 +379,8 @@ export default function CartPage() {
                           className="w-24 h-24 object-cover rounded-lg"
                           onError={(e) => {
                             if (!e.currentTarget.src.includes('/placeholder-product.png')) {
-                        e.currentTarget.src = '/placeholder-product.png';
-                      }
+                              e.currentTarget.src = '/placeholder-product.png';
+                            }
                           }}
                         />
                         <button
@@ -396,7 +399,7 @@ export default function CartPage() {
                         <h3 className="font-semibold text-neutral-900">
                           {item.product.name}
                         </h3>
-                        
+
                         {item.variant_options && (
                           <div className="flex gap-2 mt-1">
                             {item.variant_options.color && (
@@ -411,11 +414,11 @@ export default function CartPage() {
                             )}
                           </div>
                         )}
-                        
+
                         {item.product.category && (
                           <p className="text-sm text-neutral-500 mt-1">
-                            {typeof item.product.category === 'string' 
-                              ? item.product.category 
+                            {typeof item.product.category === 'string'
+                              ? item.product.category
                               : item.product.category}
                           </p>
                         )}
@@ -424,9 +427,14 @@ export default function CartPage() {
                             Out of Stock
                           </p>
                         )}
-                        {item.product.in_stock && item.product.stock_quantity < 5 && (
+                        {item.product.in_stock && (item.product.available_inventory ?? 0) < 5 && (
                           <p className="text-sm text-orange-600 font-medium mt-1">
-                            Only {item.product.stock_quantity} left in stock
+                            Only {item.product.available_inventory} left in stock
+                          </p>
+                        )}
+                        {item.product.in_stock && item.quantity > (item.product.available_inventory ?? 0) && (
+                          <p className="text-sm text-rose-600 font-medium mt-1">
+                            Insufficient stock available
                           </p>
                         )}
                         {item.notes && (
@@ -460,18 +468,17 @@ export default function CartPage() {
                           value={item.quantity}
                           onChange={(e) => {
                             const val = parseInt(e.target.value) || 1;
-                            if (val > 0 && val <= item.product.stock_quantity) {
+                            if (val > 0) {
                               handleUpdateQuantity(item.id, val);
                             }
                           }}
                           disabled={isItemUpdating}
                           className="w-16 text-center outline-none py-2 text-white" style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)', background: 'transparent' }}
                           min="1"
-                          max={item.product.stock_quantity}
                         />
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          disabled={isItemUpdating || item.quantity >= item.product.stock_quantity}
+                          disabled={isItemUpdating || item.quantity >= (item.product.available_inventory ?? 999)}
                           className="px-3 py-2 hover:bg-neutral-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           +
@@ -500,7 +507,7 @@ export default function CartPage() {
                 placeholder="Coupon code"
                 className="flex-1 px-4 py-3 border border-neutral-300 rounded-lg outline-none focus:ring-2 focus:ring-neutral-200"
               />
-              <button 
+              <button
                 onClick={() => {
                   console.log('Apply coupon:', couponCode);
                   alert('Coupon functionality coming soon!');
@@ -517,7 +524,7 @@ export default function CartPage() {
           <div className="lg:w-96">
             <div className="bg-white border border-neutral-200 rounded-lg-xl p-6 sticky top-4">
               <h2 className="text-2xl font-bold text-neutral-900 mb-6">CART TOTALS</h2>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between py-3 border-b">
                   <span className="text-neutral-700">Subtotal ({selectedItems.size} items)</span>
@@ -529,7 +536,7 @@ export default function CartPage() {
                 <div className="py-3 border-b">
                   <div className="flex justify-between mb-2">
                     <span className="text-neutral-700">
-                      ঢাকার ভিতরে: <span className="text-neutral-900 font-semibold">৳60.00</span>
+                      Inside Dhaka: <span className="text-neutral-900 font-semibold">৳60.00</span>
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -538,7 +545,7 @@ export default function CartPage() {
                       ৳{shippingFee.toFixed(2)}
                     </span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       alert('Address change functionality coming soon!');
                     }}
@@ -555,10 +562,10 @@ export default function CartPage() {
                   </span>
                 </div>
 
-                <button 
+                <button
                   onClick={handleProceedToCheckout}
-                  disabled={selectedItems.size === 0 || isUpdating.size > 0}
-                  className="w-full bg-neutral-900 text-white py-4 rounded-lg font-bold text-lg hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={selectedItems.size === 0 || isUpdating.size > 0 || isAnyItemSelectedOverStock}
+                  className="w-full bg-[var(--gold)] text-white py-4 rounded-lg font-bold text-lg hover:bg-[#9a6b2e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isUpdating.size > 0 ? (
                     <span className="flex items-center justify-center gap-2">

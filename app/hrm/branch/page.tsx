@@ -1,0 +1,327 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useStore } from '@/contexts/StoreContext';
+import { useAuth } from '@/contexts/AuthContext';
+import hrmService, { AttendanceRecord } from '@/services/hrmService';
+import employeeService, { Employee } from '@/services/employeeService';
+import AttendanceModal from '@/components/hrm/AttendanceModal';
+import { 
+  Users, 
+  UserPlus, 
+  TrendingUp, 
+  Calendar,
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  Search,
+  Filter
+} from 'lucide-react';
+import { format } from 'date-fns';
+
+export default function BranchHRMPage() {
+  const { selectedStoreId } = useStore();
+  const { user: currentUser } = useAuth();
+  
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord[]>([]);
+  const [performanceReport, setPerformanceReport] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Modal states
+  const [attendanceModal, setAttendanceModal] = useState<{
+    isOpen: boolean;
+    employee: any;
+    type: 'check_in' | 'check_out';
+  }>({
+    isOpen: false,
+    employee: null,
+    type: 'check_in'
+  });
+
+  useEffect(() => {
+    if (selectedStoreId) {
+      loadBranchData();
+    }
+  }, [selectedStoreId]);
+
+  const loadBranchData = async () => {
+    setIsLoading(true);
+    try {
+      const [empData, attToday, perfData] = await Promise.all([
+        employeeService.getAll({ store_id: selectedStoreId!, is_active: true }),
+        hrmService.getTodayAttendance(selectedStoreId!),
+        hrmService.getPerformanceReport({ store_id: selectedStoreId!, month: format(new Date(), 'yyyy-MM') })
+      ]);
+      
+      setEmployees(empData);
+      setTodayAttendance(attToday);
+      setPerformanceReport(perfData);
+    } catch (error) {
+      console.error('Failed to load branch HRM data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredEmployees = employees.filter(emp => 
+    emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    emp.phone?.includes(searchQuery)
+  );
+
+  const getEmpAttendance = (empId: number | string) => {
+    return todayAttendance.find(a => a.employee_id === Number(empId));
+  };
+
+  if (!selectedStoreId) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+        <Users className="w-16 h-16 text-gray-300 mb-4" />
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">No Store Selected</h3>
+        <p className="text-gray-500 dark:text-gray-400">Please select a store from the dropdown above to manage its HRM.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Total Staff</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{employees.length}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Present Today</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {todayAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 md:col-span-1 lg:col-span-2">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-end mb-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">Store Performance</p>
+                <p className="text-sm font-bold text-emerald-600">{performanceReport?.branch_achievement || 0}%</p>
+              </div>
+              <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 mt-1">
+                <div 
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-1000" 
+                  style={{ width: `${Math.min(performanceReport?.branch_achievement || 0, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Employee List & Attendance Control */}
+        <div className="xl:col-span-2 space-y-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Attendance Management</h3>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search staff..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-4 py-2 text-sm border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-black outline-none w-full md:w-64"
+                  />
+                </div>
+                <button className="p-2 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <Filter className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 dark:text-gray-400 uppercase font-bold">
+                  <tr>
+                    <th className="px-6 py-4">Employee</th>
+                    <th className="px-6 py-4">Current Status</th>
+                    <th className="px-6 py-4">Time Logs</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                  {filteredEmployees.map((emp) => {
+                    const record = getEmpAttendance(emp.id);
+                    return (
+                      <tr key={emp.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center font-bold text-gray-600 dark:text-gray-300">
+                              {emp.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-gray-900 dark:text-white">{emp.name}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{emp.phone || 'No Phone'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {record ? (
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              record.status === 'Present' || record.status === 'Late' 
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' 
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                              {record.status}
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-500 uppercase tracking-wider">
+                              Not Marked
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-gray-400 font-medium">IN:</span>
+                              <span className="text-gray-900 dark:text-white font-bold">{record?.clock_in || '--:--'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-gray-400 font-medium">OUT:</span>
+                              <span className="text-gray-900 dark:text-white font-bold">{record?.clock_out || '--:--'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {!record?.clock_in ? (
+                              <button 
+                                onClick={() => setAttendanceModal({ isOpen: true, employee: emp, type: 'check_in' })}
+                                className="bg-black dark:bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform"
+                              >
+                                Clock In
+                              </button>
+                            ) : !record?.clock_out ? (
+                              <button 
+                                onClick={() => setAttendanceModal({ isOpen: true, employee: emp, type: 'check_out' })}
+                                className="bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl hover:scale-105 transition-transform"
+                              >
+                                Clock Out
+                              </button>
+                            ) : (
+                              <div className="p-2 text-green-500">
+                                <CheckCircle2 className="w-5 h-5" />
+                              </div>
+                            )}
+                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                              <MoreVertical className="w-4 h-4 text-gray-400" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Performers Sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-500" />
+              Leaderboard (Performance)
+            </h3>
+            
+            <div className="space-y-5">
+              {performanceReport?.employee_rankings?.map((rank: any, idx: number) => (
+                <div key={rank.id} className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                    idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                    idx === 1 ? 'bg-gray-100 text-gray-700' :
+                    idx === 2 ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-50 text-gray-500'
+                  }`}>
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{rank.name}</p>
+                    <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-1">
+                      <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(rank.achievement_percentage, 100)}%` }}></div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                      {rank.achievement_percentage}%
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {(!performanceReport?.employee_rankings || performanceReport.employee_rankings.length === 0) && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500">No performance data yet for this month.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Actions Card */}
+          <div className="bg-black text-white rounded-2xl p-6 shadow-lg shadow-black/20">
+            <h3 className="font-bold mb-4">Branch Quick Actions</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <button className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-sm font-medium">
+                Set Sales Targets
+                <ChevronRight className="w-4 h-4 text-white/50" />
+              </button>
+              <button className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-sm font-medium">
+                Manage Holidays
+                <ChevronRight className="w-4 h-4 text-white/50" />
+              </button>
+              <button className="flex items-center justify-between p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-colors text-sm font-medium">
+                Store HRM Settings
+                <ChevronRight className="w-4 h-4 text-white/50" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Attendance Modal Implementation */}
+      {attendanceModal.isOpen && (
+        <AttendanceModal
+          isOpen={attendanceModal.isOpen}
+          onClose={() => setAttendanceModal({ ...attendanceModal, isOpen: false })}
+          employee={attendanceModal.employee}
+          type={attendanceModal.type}
+          onSuccess={loadBranchData}
+        />
+      )}
+    </div>
+  );
+}
+
+// Missing imports
+import { ChevronRight as ChevronRightIcon } from 'lucide-react';
+const ChevronRight = ChevronRightIcon;

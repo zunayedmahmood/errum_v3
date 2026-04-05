@@ -64,7 +64,11 @@ export const PAGE_ACCESS: Record<string, RoleSlug[]> = {
   '/accounting': ['super-admin', 'admin'],
   '/employees': ['super-admin', 'admin'],
   '/settings': ['super-admin', 'admin'],
-
+  '/hrm/my': ['super-admin', 'admin', 'branch-manager', 'online-moderator', 'pos-salesman', 'employee'],
+  '/hrm/branch': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
+  '/hrm/attendance': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
+  '/hrm/sales-targets': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
+  '/hrm/rewards-fines': ['super-admin', 'admin', 'branch-manager', 'online-moderator'],
 };
 
 /**

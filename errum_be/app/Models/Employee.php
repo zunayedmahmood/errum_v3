@@ -213,6 +213,46 @@ class Employee extends Authenticatable implements JWTSubject
         return $this->subordinates()->exists();
     }
 
+    public function attendance(): HasMany
+    {
+        return $this->hasMany(EmployeeAttendance::class);
+    }
+
+    public function workSchedules(): HasMany
+    {
+        return $this->hasMany(EmployeeWorkSchedule::class);
+    }
+
+    public function activeWorkSchedule()
+    {
+        return $this->workSchedules()->where('is_active', true)->where('effective_from', '<=', now())->first();
+    }
+
+    public function overtime(): HasMany
+    {
+        return $this->hasMany(EmployeeOvertime::class);
+    }
+
+    public function rewardFines(): HasMany
+    {
+        return $this->hasMany(EmployeeRewardFine::class);
+    }
+
+    public function salaryAdjustments(): HasMany
+    {
+        return $this->hasMany(EmployeeSalaryAdjustment::class);
+    }
+
+    public function salesTargets(): HasMany
+    {
+        return $this->hasMany(EmployeeSalesTarget::class);
+    }
+
+    public function dailySales(): HasMany
+    {
+        return $this->hasMany(EmployeeDailySale::class);
+    }
+
     public function updateLastLogin()
     {
         $this->update(['last_login_at' => now()]);

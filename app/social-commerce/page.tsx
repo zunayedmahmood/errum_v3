@@ -902,16 +902,32 @@ export default function SocialCommercePage() {
 
         fireToast(`Order ${createdOrder.order_number} placed successfully!`, 'success');
 
-        // Cleanup and redirect
+        // Cleanup and NOT redirecting
         setCart([]);
         setUserName('');
         setUserPhone('');
         setUserEmail('');
+        setSocialId('');
         setStreetAddress('');
-
-        setTimeout(() => {
-          window.location.href = '/orders';
-        }, 1500);
+        setPostalCode('');
+        setCountry('');
+        setState('');
+        setInternationalCity('');
+        setInternationalPostalCode('');
+        setDeliveryAddress('');
+        setIsInternational(false);
+        setTransportCost('0');
+        setPaymentOption('full');
+        setAdvanceAmount('');
+        setTransactionReference('');
+        setPaymentNotes('');
+        setExistingCustomer(null);
+        setLastOrderInfo(null);
+        setSearchQuery('');
+        setSearchResults([]);
+        setSelectedProduct(null);
+        setExpandedGroupId(null);
+        setSelectedProductInventory(null);
 
       } catch (error: any) {
         console.error('❌ Error:', error);

@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Log;
 class SslcommerzController extends Controller
 {
     /**
+     * Get frontend URL from environment or fallback
+     */
+    private function getFrontendUrl(): string
+    {
+        return rtrim(env('FRONTEND_URL', 'https://errum-v2.vercel.app'), '/');
+    }
+
+    /**
      * Map SSLCommerz card_type to internal payment method
      * 
      * SSLCommerz returns card_type values like:
@@ -118,15 +126,11 @@ class SslcommerzController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Payment successful',
-                'order_id' => $order->id,
-                'transaction_id' => $transactionId
-            ]);
+            return redirect($this->getFrontendUrl() . '/e-commerce/order-confirmation/' . $order->order_number);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SSLCommerz success callback error: ' . $e->getMessage());
-            return response()->json(['message' => 'Error processing payment'], 500);
+            return redirect($this->getFrontendUrl() . '/e-commerce/checkout?error=payment_processing_error');
         }
     }
 
@@ -164,14 +168,11 @@ class SslcommerzController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Payment failed',
-                'transaction_id' => $transactionId
-            ], 400);
+            return redirect($this->getFrontendUrl() . '/e-commerce/checkout?error=payment_failed&tran_id=' . $transactionId);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SSLCommerz failure callback error: ' . $e->getMessage());
-            return response()->json(['message' => 'Error processing failure'], 500);
+            return redirect($this->getFrontendUrl() . '/e-commerce/checkout?error=payment_failure_processing_error');
         }
     }
 
@@ -207,14 +208,11 @@ class SslcommerzController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'message' => 'Payment cancelled',
-                'transaction_id' => $transactionId
-            ]);
+            return redirect($this->getFrontendUrl() . '/e-commerce/checkout?error=payment_cancelled&tran_id=' . $transactionId);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('SSLCommerz cancel callback error: ' . $e->getMessage());
-            return response()->json(['message' => 'Error processing cancellation'], 500);
+            return redirect($this->getFrontendUrl() . '/e-commerce/checkout?error=payment_cancel_processing_error');
         }
     }
 

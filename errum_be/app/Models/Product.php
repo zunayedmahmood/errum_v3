@@ -259,6 +259,11 @@ class Product extends Model
         return $this->hasMany(ProductImage::class);
     }
 
+    public function reservedProduct()
+    {
+        return $this->hasOne(ReservedProduct::class);
+    }
+
     public function activeImages()
     {
         return $this->images()->active()->ordered();
