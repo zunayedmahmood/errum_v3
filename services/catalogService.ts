@@ -976,9 +976,12 @@ const catalogService = {
     }
   },
 
-  async getProduct(productIdentifier: number | string): Promise<ProductDetailResponse> {
+  async getProduct(
+    productIdentifier: number | string,
+    params?: { include_availability?: boolean }
+  ): Promise<ProductDetailResponse> {
     try {
-      const response = await api.get(`/catalog/products/${productIdentifier}`);
+      const response = await api.get(`/catalog/products/${productIdentifier}`, { params });
       const payload = response?.data?.data ?? response?.data ?? {};
 
       // Legacy shape: { product, related_products }

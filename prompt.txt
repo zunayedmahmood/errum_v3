@@ -144,3 +144,5 @@ Deshio order number -> POS er alada ekta serial, but, similar to E and S.
 
 scrape sareng immediately (download everything)
 (get image from imgkit and save locally)
+
+since, lookup page is currently handling all return-exchange

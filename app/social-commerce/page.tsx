@@ -1120,7 +1120,7 @@ export default function SocialCommercePage() {
     );
 
     const renderProductSearch = () => (
-      <div className="lg:col-span-2 space-y-6">
+      <div className="space-y-6 flex-1 flex flex-col min-h-0">
         {/* Search Bar */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center gap-3">
           <div className="relative flex-1">
@@ -1165,7 +1165,7 @@ export default function SocialCommercePage() {
         )}
 
         {/* Results List */}
-        <div className="space-y-3">
+        <div className="space-y-3 flex-1 overflow-y-auto pr-2 scrollbar-hide" style={{ maxHeight: '600px' }}>
           {searchResults.map((group) => (
             <div key={group.base_name} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
               <div
@@ -1329,13 +1329,14 @@ export default function SocialCommercePage() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                  {renderOrderSummary()}
-                  {renderProductSearch()}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                  {renderBranchAvailability()}
-                  {renderCustomerDetails()}
+                  <div className="lg:col-span-1 space-y-8">
+                    {renderBranchAvailability()}
+                    {renderOrderSummary()}
+                  </div>
+                  <div className="lg:col-span-2 space-y-8">
+                    {renderProductSearch()}
+                    {renderCustomerDetails()}
+                  </div>
                 </div>
               </div>
             </main>

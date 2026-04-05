@@ -10,8 +10,7 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
-  MapPin
+  ArrowRight
 } from 'lucide-react';
 
 import PremiumProductCard from '@/components/ecommerce/ui/PremiumProductCard';
@@ -26,8 +25,7 @@ import catalogService, {
   ProductCategory,
   ProductDetailResponse,
   SimpleProduct,
-  ProductImage,
-  BranchStock
+  ProductImage
 } from '@/services/catalogService';
 import cartService from '@/services/cartService';
 import { wishlistUtils } from '@/lib/wishlistUtils';
@@ -341,8 +339,6 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<SimpleProduct[]>([]);
-  const [branchStocks, setBranchStocks] = useState<BranchStock[]>([]);
-  const [loadingBranchStock, setLoadingBranchStock] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -382,20 +378,11 @@ export default function ProductDetailPage() {
         setLoading(true);
         setError(null);
 
-        const response: ProductDetailResponse = await catalogService.getProduct(productId);
+        const response: ProductDetailResponse = await catalogService.getProduct(productId, { include_availability: false });
         const mainProduct = response.product;
 
         setProduct(mainProduct);
         setRelatedProducts([...(response.related_products || [])].sort((a, b) => getNewestKey(b) - getNewestKey(a)));
-
-        // Fetch branch stock for the current product
-        setLoadingBranchStock(true);
-        catalogService.getBranchStock(productId).then(stocks => {
-          setBranchStocks(stocks);
-          setLoadingBranchStock(false);
-        }).catch(() => {
-          setLoadingBranchStock(false);
-        });
 
         const directVariantsRaw = Array.isArray((mainProduct as any).variants)
           ? (mainProduct as any).variants
@@ -1107,46 +1094,6 @@ export default function ProductDetailPage() {
                 </span>
               </div>
             </div>
-            {/* Branch Inventory Table */}
-            {!loadingBranchStock && branchStocks.length > 0 && (
-              <div className="ec-dark-card overflow-hidden">
-                <div className="px-5 py-3 border-b border-white/5 bg-white/[0.02] flex items-center gap-2">
-                  <MapPin size={14} className="text-[var(--gold)]" />
-                  <span className="text-[11px] font-semibold tracking-wider text-white/90 uppercase" style={{ fontFamily: "'DM Mono', monospace" }}>
-                    Branch Availability
-                  </span>
-                </div>
-                <div className="overflow-x-auto ec-scrollbar">
-                  <table className="w-full text-left min-w-[300px]">
-                    <thead>
-                      <tr className="border-b border-white/5 text-[10px] uppercase tracking-widest text-white/30" style={{ fontFamily: "'DM Mono', monospace" }}>
-                        <th className="px-5 py-3 font-medium">Branch Location</th>
-                        <th className="px-5 py-3 font-medium text-right">Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {branchStocks.map((stock) => (
-                        <tr key={stock.store_id} className="group hover:bg-white/[0.01] transition-colors">
-                          <td className="px-5 py-3">
-                            <p className="text-[12px] font-medium text-white/80 group-hover:text-white transition-colors">
-                              {stock.store_name}
-                            </p>
-                            {stock.store_address && (
-                              <p className="text-[10px] text-white/20 line-clamp-1">{stock.store_address}</p>
-                            )}
-                          </td>
-                          <td className="px-5 py-3 text-right">
-                            <span className="text-[12px] font-semibold text-[var(--gold)]">
-                              {stock.total_quantity}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
             {/* Trust strip */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">

@@ -511,7 +511,7 @@ class EcommerceCatalogController extends Controller
             // ✅ Merge core SKU images + variant image (primary) so details page always has images.
             $mergedImages = $this->mergedActiveImages($product, ['id','url','alt_text','is_primary','sort_order']);
             
-            return response()->json([
+            $response = [
                 'success' => true,
                 'data' => [
                     'product' => [
@@ -540,14 +540,6 @@ class EcommerceCatalogController extends Controller
                             'id' => $product->vendor->id,
                             'name' => $product->vendor->business_name,
                         ] : null,
-                        'batches' => $product->batches->map(function ($batch) {
-                            return [
-                                'id' => $batch->id,
-                                'sell_price' => $batch->sell_price,
-                                'quantity' => $batch->quantity,
-                                'store_id' => $batch->store_id,
-                            ];
-                        }),
                         'created_at' => $product->created_at,
                         'updated_at' => $product->updated_at,
                     ],
@@ -566,7 +558,19 @@ class EcommerceCatalogController extends Controller
                         ];
                     }),
                 ],
-            ]);
+            ];
+
+            // Always provide batches, but conditionally hide store_id (for branch availability control)
+            $response['data']['product']['batches'] = $product->batches->map(function ($batch) use ($request) {
+                $batchData = $batch->toArray();
+                if (!$request->boolean('include_availability', true)) {
+                    unset($batchData['store_id']);
+                    unset($batchData['store']); // Also unset eager-loaded store relation if any
+                }
+                return $batchData;
+            });
+
+            return response()->json($response);
 
         } catch (\Exception $e) {
             return response()->json([
