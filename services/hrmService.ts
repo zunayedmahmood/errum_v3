@@ -62,7 +62,30 @@ const hrmService = {
 
   async getTodayAttendance(storeId?: number): Promise<AttendanceRecord[]> {
     const response = await axiosInstance.get('/hrm/attendance/report/today', { params: { store_id: storeId } });
-    return response.data.success ? response.data.data : [];
+    if (response.data.success && response.data.data?.rows) {
+      // Normalize backend "rows" structure to AttendanceRecord[]
+      return response.data.data.rows.map((row: any) => {
+        const att = row.attendance || {};
+        // Normalize status to Capital Case for frontend matching
+        let status = att.status || 'Not Marked';
+        if (status === 'present') status = 'Present';
+        if (status === 'late') status = 'Late';
+        if (status === 'absent') status = 'Absent';
+        if (status === 'leave') status = 'Leave';
+        if (status === 'half_day') status = 'Half Day';
+        if (status === 'holiday_auto') status = 'Holiday';
+        if (status === 'off_day_auto') status = 'Off Day';
+
+        return {
+          ...att,
+          employee_id: row.employee.id,
+          status: status,
+          clock_in: att.in_time,
+          clock_out: att.out_time,
+        };
+      });
+    }
+    return [];
   },
 
   async getAttendanceHistory(employeeId: number): Promise<AttendanceRecord[]> {

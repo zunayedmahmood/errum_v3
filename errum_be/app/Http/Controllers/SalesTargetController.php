@@ -35,17 +35,15 @@ class SalesTargetController extends Controller
 
         $month = Carbon::createFromFormat('Y-m', $validated['month'], self::TIMEZONE)->startOfMonth()->toDateString();
 
-        $employees = Employee::query()
+        $targets = EmployeeSalesTarget::query()
             ->where('store_id', $storeId)
-            ->where('is_active', true)
-            ->with(['salesTargets' => function ($q) use ($month) {
-                $q->where('target_month', $month);
-            }])
+            ->where('target_month', $month)
+            ->with(['employee:id,name,employee_code'])
             ->get();
 
         return response()->json([
             'success' => true,
-            'data' => $employees,
+            'data' => $targets,
         ]);
     }
 
@@ -231,9 +229,12 @@ class SalesTargetController extends Controller
             ->orderBy('name')
             ->get();
 
-        $report = [];
+        $items = [];
+        $branchTarget = 0;
+        $totalSales = 0;
+
         foreach ($employees as $emp) {
-            $totalSales = EmployeeDailySale::query()
+            $empSales = (float) EmployeeDailySale::query()
                 ->where('employee_id', $emp->id)
                 ->whereBetween('sales_date', [$monthStart, $monthEnd])
                 ->sum('total_sales_amount');
@@ -243,19 +244,36 @@ class SalesTargetController extends Controller
                 ->where('target_month', $monthStart)
                 ->first();
 
-            $report[] = [
+            $empTargetAmount = $target ? (float) $target->target_amount : 0;
+            
+            $branchTarget += $empTargetAmount;
+            $totalSales += $empSales;
+
+            $items[] = [
                 'employee' => $emp->only(['id', 'name', 'employee_code']),
-                'target_amount' => $target ? $target->target_amount : 0,
-                'achieved_amount' => (float)$totalSales,
-                'achievement_percent' => ($target && $target->target_amount > 0)
-                    ? round($totalSales / $target->target_amount * 100, 2)
+                'target_amount' => $empTargetAmount,
+                'achieved_amount' => $empSales,
+                'achievement_percentage' => ($empTargetAmount > 0)
+                    ? round($empSales / $empTargetAmount * 100, 2)
                     : 0,
             ];
         }
 
+        // Sort items by achievement_percentage descending for leaderboard
+        usort($items, function($a, $b) {
+            return $b['achievement_percentage'] <=> $a['achievement_percentage'];
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $report,
+            'data' => [
+                'items' => $items,
+                'branch_target' => $branchTarget,
+                'total_sales' => $totalSales,
+                'branch_achievement' => ($branchTarget > 0)
+                    ? round($totalSales / $branchTarget * 100, 2)
+                    : 0,
+            ],
         ]);
     }
 

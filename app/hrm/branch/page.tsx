@@ -273,8 +273,8 @@ export default function BranchHRMPage() {
             </h3>
 
             <div className="space-y-5">
-              {performanceReport?.employee_rankings?.map((rank: any, idx: number) => (
-                <div key={rank.id} className="flex items-center gap-4">
+              {(performanceReport?.items || []).slice(0, 5).map((rank: any, idx: number) => (
+                <div key={rank.employee.id} className="flex items-center gap-4">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${idx === 0 ? 'bg-yellow-100 text-yellow-700' :
                       idx === 1 ? 'bg-gray-100 text-gray-700' :
                         idx === 2 ? 'bg-orange-100 text-orange-700' :
@@ -283,7 +283,7 @@ export default function BranchHRMPage() {
                     {idx + 1}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{rank.name}</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{rank.employee.name}</p>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-1">
                       <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min(rank.achievement_percentage, 100)}%` }}></div>
                     </div>
@@ -295,7 +295,7 @@ export default function BranchHRMPage() {
                   </div>
                 </div>
               ))}
-              {(!performanceReport?.employee_rankings || performanceReport.employee_rankings.length === 0) && (
+              {(!performanceReport?.items || performanceReport.items.length === 0) && (
                 <div className="text-center py-8">
                   <p className="text-sm text-gray-500">No performance data yet for this month.</p>
                 </div>

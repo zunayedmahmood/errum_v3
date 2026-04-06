@@ -62,10 +62,9 @@ class PayrollController extends Controller
                 ->where('is_applied', false)
                 ->sum('amount');
 
-            // Late Fees
             $lateFees = EmployeeAttendance::query()
                 ->where('employee_id', $employee->id)
-                ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
                 ->where('is_applied', false)
                 ->sum('late_fee');
 
@@ -168,7 +167,7 @@ class PayrollController extends Controller
 
             $lateFees = EmployeeAttendance::query()
                 ->where('employee_id', $employee->id)
-                ->whereBetween('entry_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->whereBetween('attendance_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
                 ->where('is_applied', false);
             $totalLateFees = (float)$lateFees->sum('late_fee');
             

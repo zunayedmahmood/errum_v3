@@ -576,10 +576,10 @@ class OrderController extends Controller
             
             if ($taxMode === 'inclusive') {
                 // Inclusive: tax already in subtotal
-                $totalAmount = $subtotal - $orderDiscount - $totalItemDiscount + $shippingAmount;
+                $totalAmount = $subtotal - max($orderDiscount, $totalItemDiscount) + $shippingAmount;
             } else {
                 // Exclusive: add tax to subtotal
-                $totalAmount = $subtotal + $taxTotal - $orderDiscount - $totalItemDiscount + $shippingAmount;
+                $totalAmount = $subtotal + $taxTotal - max($orderDiscount, $totalItemDiscount) + $shippingAmount;
             }
 
             $order->update([
@@ -735,8 +735,15 @@ class OrderController extends Controller
                 $oldDiscount = $order->discount_amount;
                 $order->discount_amount = $request->discount_amount;
                 
-                // Recalculate totals
-                $order->total_amount = $order->subtotal - $request->discount_amount + $order->shipping_amount;
+                $totalItemDiscount = $order->items->sum('discount_amount');
+                $taxTotal = $order->items->sum('tax_amount');
+                $taxMode = config('app.tax_mode', 'inclusive');
+
+                if ($taxMode === 'inclusive') {
+                    $order->total_amount = $order->subtotal - $request->discount_amount - $totalItemDiscount + $order->shipping_amount;
+                } else {
+                    $order->total_amount = $order->subtotal + $taxTotal - $request->discount_amount - $totalItemDiscount + $order->shipping_amount;
+                }
                 $order->outstanding_amount = $order->total_amount - $order->paid_amount;
             }
 
@@ -744,8 +751,15 @@ class OrderController extends Controller
                 $oldShipping = $order->shipping_amount;
                 $order->shipping_amount = $request->shipping_amount;
                 
-                // Recalculate totals
-                $order->total_amount = $order->subtotal - $order->discount_amount + $request->shipping_amount;
+                $totalItemDiscount = $order->items->sum('discount_amount');
+                $taxTotal = $order->items->sum('tax_amount');
+                $taxMode = config('app.tax_mode', 'inclusive');
+
+                if ($taxMode === 'inclusive') {
+                    $order->total_amount = $order->subtotal - $order->discount_amount - $totalItemDiscount + $request->shipping_amount;
+                } else {
+                    $order->total_amount = $order->subtotal + $taxTotal - $order->discount_amount - $totalItemDiscount + $request->shipping_amount;
+                }
                 $order->outstanding_amount = $order->total_amount - $order->paid_amount;
             }
 
