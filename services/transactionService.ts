@@ -95,14 +95,14 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
   // Order payments, sales, and order-related transactions should be INCOME (money coming in)
   // Even if backend incorrectly marks them as debit
   let actualType: 'income' | 'expense';
-  
+
   const refType = transaction.reference_type?.toLowerCase() || '';
   const metadata = transaction.metadata || {};
-  
+
   // If it's an order payment or sale, it's income (money received from customer)
   if (refType.includes('orderpayment') || refType.includes('order') || refType.includes('sale')) {
     actualType = 'income';
-  } 
+  }
   // If it's a purchase order or vendor payment or expense, it's expense (money paid out)
   else if (refType.includes('purchaseorder') || refType.includes('vendor') || refType.includes('batch') || refType.includes('expense')) {
     actualType = 'expense';
@@ -114,11 +114,11 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
 
   // Determine source label based on order_type from metadata
   let source = 'manual';
-  
+
   if (refType.includes('orderpayment') || refType.includes('order')) {
     // Check order_type from metadata (best way)
     const orderType = metadata.order_type;
-    
+
     if (orderType === 'counter') {
       source = 'sale'; // Counter/POS Sale
     } else if (orderType === 'social_commerce') {
@@ -129,7 +129,7 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
       // Fallback: try to determine from order number or other indicators
       const orderNumber = metadata.order_number || '';
       const hasShipping = metadata.shipping_amount || metadata.shipping_address;
-      
+
       // Counter orders typically don't have shipping
       if (hasShipping) {
         source = 'order'; // Likely social commerce or ecommerce
@@ -159,7 +159,7 @@ function mapTransactionToUI(transaction: BackendTransaction): Transaction {
 
   // Extract transaction name from metadata
   let name = metadata.original_name || transaction.description || 'Transaction';
-  
+
   // For order payments, use a more descriptive name
   if (refType.includes('orderpayment')) {
     const orderNum = metadata.order_number || '';
@@ -198,23 +198,23 @@ const transactionService = {
     page?: number;
   }) {
     const response = await api.get('/transactions', { params });
-    
+
     // Map backend transactions to frontend UI format
     const responseData = response.data.data;
     const transactions = Array.isArray(responseData) ? responseData : (responseData?.data || []);
-    
+
     // Extract unique order IDs from order payments
-    const orderPaymentTransactions = transactions.filter((t: any) => 
+    const orderPaymentTransactions = transactions.filter((t: any) =>
       t.reference_type?.includes('OrderPayment') && t.metadata?.order_number
     );
-    
+
     // Extract order numbers to fetch order details in bulk
     const orderNumbers = [...new Set(
       orderPaymentTransactions
         .map((t: any) => t.metadata?.order_number)
         .filter(Boolean)
     )];
-    
+
     // Fetch all orders in one request if we have order numbers
     let ordersMap: Record<string, any> = {};
     if (orderNumbers.length > 0) {
@@ -223,7 +223,7 @@ const transactionService = {
           params: { per_page: 1000 } // Get all orders
         });
         const orders = ordersResponse.data.data?.data || ordersResponse.data.data || [];
-        
+
         // Create a map of order_number -> order
         ordersMap = orders.reduce((acc: any, order: any) => {
           acc[order.order_number] = order;
@@ -233,7 +233,7 @@ const transactionService = {
         console.warn('Could not fetch orders:', error);
       }
     }
-    
+
     // Enrich transactions with order data
     const enrichedTransactions = transactions.map((transaction: any) => {
       if (transaction.metadata?.order_number && ordersMap[transaction.metadata.order_number]) {
@@ -243,7 +243,7 @@ const transactionService = {
       }
       return mapTransactionToUI(transaction);
     });
-    
+
     return {
       transactions: enrichedTransactions,
       pagination: responseData?.meta || null,
@@ -280,7 +280,7 @@ const transactionService = {
   async addAttachment(id: number, file: File) {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     const response = await api.post(`/transactions/${id}/attachments`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -328,22 +328,22 @@ const transactionService = {
   // Update transaction
   async updateTransaction(id: number, data: Partial<TransactionCreate>) {
     const transactionData: any = {};
-    
+
     if (data.date) transactionData.transaction_date = data.date;
     if (data.amount) transactionData.amount = data.amount;
     if (data.type) transactionData.type = data.type === 'income' ? 'credit' : 'debit';
-    
+
     // Build metadata
     const metadata: any = {};
     if (data.category) metadata.category = data.category;
     if (data.comment) metadata.comment = data.comment;
     if (data.receiptImage) metadata.receiptImage = data.receiptImage;
     if (data.name) metadata.original_name = data.name;
-    
+
     if (Object.keys(metadata).length > 0) {
       transactionData.metadata = metadata;
     }
-    
+
     if (data.name || data.description) {
       transactionData.description = `${data.name || ''}${data.description ? ' - ' + data.description : ''}`;
     }
@@ -393,7 +393,7 @@ const transactionService = {
       { id: 7, name: 'Office Supplies', type: 'expense' },
       { id: 8, name: 'Maintenance', type: 'expense' },
       { id: 9, name: 'Other Expenses', type: 'expense' },
-      
+
       // Income categories
       { id: 10, name: 'Product Sales', type: 'income' },
       { id: 11, name: 'Service Revenue', type: 'income' },

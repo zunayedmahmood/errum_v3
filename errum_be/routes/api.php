@@ -1643,6 +1643,10 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('reporting')->group(function () {
         // Business Command Center (Next.js Reports)
         Route::get('/command-center', [BusinessAnalyticsController::class, 'commandCenter']);
+        Route::get('/sales-trend', [BusinessAnalyticsController::class, 'salesTrend']);
+        Route::get('/top-products', [BusinessAnalyticsController::class, 'topProducts']);
+        Route::get('/stock-watchlist', [BusinessAnalyticsController::class, 'stockWatchlist']);
+        Route::get('/branch-performance', [BusinessAnalyticsController::class, 'branchPerformance']);
         Route::get('/live-best-sellers', [BusinessAnalyticsController::class, 'liveBestSellers']);
         Route::get('/branch-comparison', [BusinessAnalyticsController::class, 'branchComparison']);
         Route::get('/export-summary', [BusinessAnalyticsController::class, 'exportSummary']);

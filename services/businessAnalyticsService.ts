@@ -54,6 +54,7 @@ export interface StockWatchRow {
   reorder_level: number;
   shortage: number;
   revenue_30d: number;
+  age_days: number;
 }
 
 export interface StorePerformanceRow {
@@ -85,8 +86,20 @@ export interface CommandCenterResponse {
 }
 
 const businessAnalyticsService = {
-  getCommandCenter(params: ReportingFilters = {}) {
+  getCommandCenter(params: ReportingFilters & { interval?: string } = {}) {
     return axiosInstance.get<CommandCenterResponse>('/reporting/command-center', { params }).then(r => r.data);
+  },
+  getSalesTrend(params: ReportingFilters & { interval?: string } = {}) {
+    return axiosInstance.get<{ success: boolean; data: TrendPoint[] }>('/reporting/sales-trend', { params }).then(r => r.data);
+  },
+  getTopProducts(params: ReportingFilters & { category_id?: number | string; min_price?: number; max_price?: number } = {}) {
+    return axiosInstance.get<{ success: boolean; data: TopProductRow[] }>('/reporting/top-products', { params }).then(r => r.data);
+  },
+  getStockWatchlist(params: ReportingFilters = {}) {
+    return axiosInstance.get<{ success: boolean; data: StockWatchRow[] }>('/reporting/stock-watchlist', { params }).then(r => r.data);
+  },
+  getBranchPerformance(params: ReportingFilters = {}) {
+    return axiosInstance.get<{ success: boolean; data: StorePerformanceRow[] }>('/reporting/branch-performance', { params }).then(r => r.data);
   },
   getLiveBestSellers(params: ReportingFilters = {}) {
     return axiosInstance.get('/reporting/live-best-sellers', { params }).then(r => r.data);

@@ -13,6 +13,7 @@ use App\Models\Store;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BusinessAnalyticsController extends Controller
@@ -29,8 +30,9 @@ class BusinessAnalyticsController extends Controller
         $inventoryBatches = $this->baseInventoryQuery($storeId)->with(['product', 'store'])->get();
 
         $orderItems = $orders->flatMap->items;
-        $salesTrend = $this->buildSalesTrend($orders, $from, $to);
-        $topProducts = $this->buildTopProducts($orderItems, $inventoryBatches);
+        
+        $salesTrend = $this->buildSalesTrend($orders, $from, $to, $request->query('interval', 'day'));
+        $topProducts = $this->buildTopProducts($orderItems, $inventoryBatches, $request);
         $stockWatchlist = $this->buildStockWatchlist($inventoryBatches, $orderItems);
         $branchPerformance = $this->buildBranchPerformance($orders, $expenses);
 
@@ -55,13 +57,13 @@ class BusinessAnalyticsController extends Controller
         $categoryPerformance = $orderItems
             ->groupBy(fn ($item) => $item->product?->category_id ?? 'uncategorized')
             ->map(function (Collection $items, $categoryId) {
-                $name = optional(optional($items->first())->product)->category->name ?? ($categoryId === 'uncategorized' ? 'Uncategorized' : 'Category ' . $categoryId);
+                $category = optional(optional($items->first())->product)->category;
+                $name = $category ? $category->name : ($categoryId === 'uncategorized' ? 'Uncategorized' : 'Category ' . $categoryId);
                 return ['label' => $name, 'value' => round((float) $items->sum('total_amount'), 2)];
             })
             ->sortByDesc('value')
             ->values()
-            ->take(8)
-            ->values();
+            ->take(8);
 
         $paymentMethodMix = $orders
             ->groupBy(fn ($order) => $order->payment_method ?: 'unknown')
@@ -113,6 +115,61 @@ class BusinessAnalyticsController extends Controller
         ]);
     }
 
+    public function salesTrend(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+        $storeId = $request->query('store_id');
+        $interval = $request->query('interval', 'day');
+        
+        $orders = $this->baseOrdersQuery($from, $to, $storeId)->with('items')->get();
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildSalesTrend($orders, $from, $to, $interval)
+        ]);
+    }
+
+    public function topProducts(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+        $storeId = $request->query('store_id');
+        
+        $orders = $this->baseOrdersQuery($from, $to, $storeId)->with('items.product')->get();
+        $inventoryBatches = $this->baseInventoryQuery($storeId)->get();
+        $items = $orders->flatMap->items;
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildTopProducts($items, $inventoryBatches, $request),
+        ]);
+    }
+
+    public function stockWatchlist(Request $request)
+    {
+        $storeId = $request->query('store_id');
+        $inventoryBatches = $this->baseInventoryQuery($storeId)->with('product')->get();
+        
+        $from = Carbon::now()->subDays(30);
+        $to = Carbon::now();
+        $items = $this->baseOrdersQuery($from, $to, $storeId)->with('items')->get()->flatMap->items;
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildStockWatchlist($inventoryBatches, $items),
+        ]);
+    }
+
+    public function branchPerformance(Request $request)
+    {
+        [$from, $to] = $this->resolveDateRange($request);
+        $orders = $this->baseOrdersQuery($from, $to)->with('items')->get();
+        $expenses = $this->baseExpensesQuery($from, $to)->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->buildBranchPerformance($orders, $expenses),
+        ]);
+    }
+
     public function liveBestSellers(Request $request)
     {
         $from = Carbon::today();
@@ -124,7 +181,7 @@ class BusinessAnalyticsController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->buildTopProducts($items, $inventoryBatches)->take(8)->values(),
+            'data' => $this->buildTopProducts($items, $inventoryBatches, $request)->take(8)->values(),
         ]);
     }
 
@@ -220,30 +277,77 @@ class BusinessAnalyticsController extends Controller
         return $query;
     }
 
-    private function buildSalesTrend(Collection $orders, Carbon $from, Carbon $to): Collection
+    private function buildSalesTrend(Collection $orders, Carbon $from, Carbon $to, $interval = 'day'): Collection
     {
-        return collect($from->copy()->startOfDay()->daysUntil($to->copy()->startOfDay()->addDay()))
-            ->map(function (Carbon $date) use ($orders) {
-                $dayOrders = $orders->filter(fn ($o) => optional($o->order_date)->isSameDay($date));
-                $items = $dayOrders->flatMap->items;
-                $netSales = (float) $dayOrders->sum('total_amount');
-                $profit = (float) ($items->sum('total_amount') - $items->sum('cogs'));
+        $dates = collect();
+        $curr = $from->copy()->startOfDay();
+        $end = $to->copy()->endOfDay();
 
-                return [
-                    'date' => $date->toDateString(),
-                    'orders' => $dayOrders->count(),
-                    'net_sales' => round($netSales, 2),
-                    'gross_profit' => round($profit, 2),
-                ];
-            })
-            ->values();
+        // Build base dataset depending on interval
+        while ($curr->lte($end)) {
+            $label = '';
+            $next = $curr->copy();
+            
+            switch ($interval) {
+                case 'year':
+                    $label = $curr->format('Y');
+                    $next->addYear();
+                    break;
+                case 'month':
+                    $label = $curr->format('M Y');
+                    $next->addMonth();
+                    break;
+                case 'week':
+                    $label = 'W' . $curr->weekOfYear . ' ' . $curr->format('M');
+                    $next->addWeek();
+                    break;
+                default:
+                    $label = $curr->format('Y-m-d');
+                    $next->addDay();
+                    break;
+            }
+
+            $periodOrders = $orders->filter(fn ($o) => $o->order_date >= $curr && $o->order_date < $next);
+            $items = $periodOrders->flatMap->items;
+            
+            $dates->push([
+                'date' => $label,
+                'orders' => $periodOrders->count(),
+                'net_sales' => round((float) $periodOrders->sum('total_amount'), 2),
+                'gross_profit' => round((float) ($items->sum('total_amount') - $items->sum('cogs')), 2),
+            ]);
+
+            $curr = $next;
+        }
+
+        return $dates->values();
     }
 
-    private function buildTopProducts(Collection $items, Collection $inventoryBatches): Collection
+    private function buildTopProducts(Collection $items, Collection $inventoryBatches, Request $request): Collection
     {
+        // Apply nested filters in memory for items
+        $categoryId = $request->query('category_id');
+        $minPrice = $request->query('min_price');
+        $maxPrice = $request->query('max_price');
+        $storeId = $request->query('store_id');
+
+        $filteredItems = $items;
+        if ($categoryId) {
+            $filteredItems = $filteredItems->filter(fn($i) => optional($i->product)->category_id == $categoryId);
+        }
+        if ($minPrice !== null) {
+            $filteredItems = $filteredItems->filter(fn($i) => $i->unit_price >= $minPrice);
+        }
+        if ($maxPrice !== null) {
+            $filteredItems = $filteredItems->filter(fn($i) => $i->unit_price <= $maxPrice);
+        }
+        if ($storeId) {
+            $filteredItems = $filteredItems->filter(fn($i) => optional($i->order)->store_id == $storeId);
+        }
+
         $stockByProduct = $inventoryBatches->groupBy('product_id')->map(fn ($rows) => (int) $rows->sum('quantity'));
 
-        return $items
+        return $filteredItems
             ->groupBy('product_id')
             ->map(function (Collection $productItems, $productId) use ($stockByProduct) {
                 $first = $productItems->first();
@@ -272,6 +376,11 @@ class BusinessAnalyticsController extends Controller
                 $first = $batches->first();
                 $available = (int) $batches->sum('quantity');
                 $reorder = max(5, (int) ceil($batches->avg('quantity') ?: 5));
+                
+                // Calculate age: days since oldest batch arrived
+                $oldestBatchDate = $batches->min('created_at');
+                $ageDays = $oldestBatchDate ? Carbon::parse($oldestBatchDate)->diffInDays(Carbon::now()) : 0;
+
                 return [
                     'product_id' => (int) $productId,
                     'name' => (string) optional($first->product)->name,
@@ -280,6 +389,7 @@ class BusinessAnalyticsController extends Controller
                     'reorder_level' => $reorder,
                     'shortage' => max(0, $reorder - $available),
                     'revenue_30d' => (float) ($revenue30ByProduct[$productId] ?? 0),
+                    'age_days' => (int) $ageDays,
                 ];
             })
             ->filter(fn ($row) => $row['available_quantity'] <= $row['reorder_level'])
