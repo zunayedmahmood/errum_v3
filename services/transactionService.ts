@@ -253,13 +253,27 @@ const transactionService = {
   // Get single transaction
   async getTransaction(id: number) {
     const response = await api.get(`/transactions/${id}`);
+    const data = response.data.data;
     return {
-      transaction: mapTransactionToUI(response.data.data.transaction || response.data.data),
-      related_transactions: response.data.data.related_transactions || [],
-      group_id: response.data.data.group_id,
-      attachments: response.data.data.attachments || [],
-      additional_references: response.data.data.additional_references || [],
+      transaction: mapTransactionToUI(data.transaction || data),
+      related_transactions: data.related_transactions || [],
+      group_id: data.group_id,
+      attachments: data.attachments || [],
+      additional_references: data.additional_references || [],
     };
+  },
+
+  // Alias for detail page consistency
+  async getTransactionById(id: number) {
+    try {
+      const res = await this.getTransaction(id);
+      return {
+        success: true,
+        data: res.transaction
+      };
+    } catch (error) {
+      return { success: false, data: null };
+    }
   },
 
   // Add attachment to transaction

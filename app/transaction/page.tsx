@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from "@/contexts/ThemeContext";
+import { useRouter } from 'next/navigation';
 import { Plus, Calendar, Tag, TrendingDown, TrendingUp, Receipt, Search, ShoppingBag, Store, Package, RefreshCw, ArrowUpDown, Image as ImageIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
@@ -12,6 +13,7 @@ import { toast } from 'react-hot-toast';
 
 export default function TransactionsPage() {
   const { darkMode, setDarkMode } = useTheme();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -396,7 +398,8 @@ export default function TransactionsPage() {
                       return (
                         <div 
                           key={transaction.id} 
-                          className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
+                          onClick={() => router.push(`/transaction/${transaction.id}`)}
+                          className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200 cursor-pointer group"
                         >
                           <div className="flex items-start gap-3">
                             <div className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white flex-shrink-0">
@@ -408,7 +411,7 @@ export default function TransactionsPage() {
                                 <div className="flex-1 min-w-0">
                                   <h3 className="font-semibold text-gray-900 dark:text-white mb-1 text-sm flex items-center gap-2">
                                     {transaction.name}
-                                    <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-mono border border-blue-100 dark:border-blue-800/50">
+                                    <span className="text-[10px] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded font-mono border border-blue-100 dark:border-blue-800/50 group-hover:bg-blue-100 dark:group-hover:bg-blue-800 transition-colors">
                                       {transaction.referenceId}
                                     </span>
                                   </h3>
