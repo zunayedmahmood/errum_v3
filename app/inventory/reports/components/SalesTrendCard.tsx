@@ -10,12 +10,12 @@ function currency(value: number) {
   return new Intl.NumberFormat('en-BD', { maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
-export default function SalesTrendCard({ 
-  initialData, 
-  initialFilters 
-}: { 
-  initialData: TrendPoint[], 
-  initialFilters: { from: string, to: string } 
+export default function SalesTrendCard({
+  initialData,
+  initialFilters
+}: {
+  initialData: TrendPoint[],
+  initialFilters: { from: string, to: string, store_id?: string | number, sku?: string }
 }) {
   const [data, setData] = useState<TrendPoint[]>(initialData);
   const [filters, setFilters] = useState<{ from: string, to: string, store_id?: string | number, sku?: string }>(initialFilters);
@@ -35,7 +35,7 @@ export default function SalesTrendCard({
   };
 
   const handleDateChange = (from: string, to: string) => {
-    const newFilters = { from, to };
+    const newFilters = { ...filters, from, to };
     setFilters(newFilters);
     fetchData(newFilters, interval);
   };
@@ -52,18 +52,18 @@ export default function SalesTrendCard({
   const width = 1000;
   const height = 300;
   const padding = 40;
-  
+
   const stepX = data.length > 1 ? (width - padding * 2) / (data.length - 1) : 0;
   const scaleY = (value: number) => {
     const range = max - min || 1;
     return (height - padding * 2) - ((value - min) / range) * (height - padding * 3) + padding;
   };
 
-  const path = data.length > 1 
+  const path = data.length > 1
     ? data.map((p, i) => `${i === 0 ? 'M' : 'L'} ${padding + i * stepX} ${scaleY(p.net_sales)}`).join(' ')
     : '';
-  
-  const area = data.length > 1 
+
+  const area = data.length > 1
     ? `${path} L ${padding + (data.length - 1) * stepX} ${height - padding} L ${padding} ${height - padding} Z`
     : '';
 
@@ -80,11 +80,10 @@ export default function SalesTrendCard({
               <button
                 key={i}
                 onClick={() => handleIntervalChange(i)}
-                className={`px-3 py-1 text-[10px] font-bold rounded-md capitalize transition-all ${
-                  interval === i 
-                    ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                className={`px-3 py-1 text-[10px] font-bold rounded-md capitalize transition-all ${interval === i
+                    ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 uppercase'
-                }`}
+                  }`}
               >
                 {i}
               </button>
@@ -92,9 +91,9 @@ export default function SalesTrendCard({
           </div>
           <div className="flex items-center bg-white dark:bg-gray-900 rounded-lg px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700">
             <Search className="w-3.5 h-3.5 text-gray-400 mr-2" />
-            <input 
-              type="text" 
-              placeholder="Filter by SKU..." 
+            <input
+              type="text"
+              placeholder="Filter by SKU..."
               value={filters.sku || ''}
               onChange={(e) => setFilters(p => ({ ...p, sku: e.target.value }))}
               onKeyDown={(e) => e.key === 'Enter' && fetchData()}
@@ -144,19 +143,19 @@ export default function SalesTrendCard({
               {data.length > 1 && (
                 <>
                   <path d={area} fill="url(#salesGradient)" />
-                  <path 
-                    d={path} 
-                    fill="none" 
-                    stroke="rgb(99 102 241)" 
-                    strokeWidth="3" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="rgb(99 102 241)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
-                  
+
                   {data.map((p, i) => {
                     const x = padding + i * stepX;
                     const y = scaleY(p.net_sales);
-                    
+
                     // Only show limited labels to avoid overlap
                     const shouldShowLabel = data.length <= 15 || i % Math.ceil(data.length / 10) === 0 || i === data.length - 1;
 
@@ -165,11 +164,11 @@ export default function SalesTrendCard({
                         <circle cx={x} cy={y} r="4" fill="white" stroke="rgb(99 102 241)" strokeWidth="2" />
                         <circle cx={x} cy={y} r="10" fill="transparent" />
                         {shouldShowLabel && (
-                          <text 
-                            x={x} 
-                            y={height - padding + 20} 
-                            textAnchor="middle" 
-                            fontSize="10" 
+                          <text
+                            x={x}
+                            y={height - padding + 20}
+                            textAnchor="middle"
+                            fontSize="10"
                             className="fill-gray-500 dark:fill-gray-400 font-medium rotate-0"
                           >
                             {p.date}
@@ -181,9 +180,9 @@ export default function SalesTrendCard({
                   })}
                 </>
               )}
-              
+
               {data.length === 1 && (
-                <circle cx={width/2} cy={height/2} r="5" fill="rgb(99 102 241)" />
+                <circle cx={width / 2} cy={height / 2} r="5" fill="rgb(99 102 241)" />
               )}
             </svg>
           </div>

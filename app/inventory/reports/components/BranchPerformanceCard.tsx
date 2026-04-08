@@ -13,12 +13,12 @@ function percent(value: number) {
   return `${Number(value || 0).toFixed(1)}%`;
 }
 
-export default function BranchPerformanceCard({ 
-  initialData, 
-  initialFilters 
-}: { 
-  initialData: StorePerformanceRow[], 
-  initialFilters: { from: string, to: string, sku?: string } 
+export default function BranchPerformanceCard({
+  initialData,
+  initialFilters
+}: {
+  initialData: StorePerformanceRow[],
+  initialFilters: { from: string, to: string, sku?: string }
 }) {
   const [data, setData] = useState<StorePerformanceRow[]>(initialData);
   const [filters, setFilters] = useState<{ from: string, to: string, sku?: string }>(initialFilters);
@@ -37,7 +37,7 @@ export default function BranchPerformanceCard({
   };
 
   const handleDateChange = (from: string, to: string) => {
-    const newFilters = { from, to };
+    const newFilters = { ...filters, from, to };
     setFilters(newFilters);
     fetchData(newFilters);
   };
@@ -66,9 +66,9 @@ export default function BranchPerformanceCard({
                   <div className="text-gray-900 dark:text-white font-black">{currency(store.net_sales)}</div>
                 </div>
                 <div className="h-2.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-1000 ease-out" 
-                    style={{ width: `${width}%` }} 
+                  <div
+                    className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-1000 ease-out"
+                    style={{ width: `${width}%` }}
                   />
                 </div>
               </div>
