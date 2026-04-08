@@ -204,3 +204,13 @@ we'll show the base name here (and grouped sku wise)
 when we select a product from that modal, it'll be selected and the modal will close. and the sku input field will be updated with the selected product's sku. 
 
 polish the page and proportion. currently, it looks squeezed and some components like branch performance is spilling out of its box.
+
+### new barcode print for price adjustments
+See inventory price adjustment page. we want to add a new feature there. 
+->add a print button there. it will be clickable once a batch's price has been successfully changed. 
+->when clicked, we'll print all barcodes of that batch which are 'available'.
+->see components/GroupedAllBarcodesPrinter.tsx component and the bacodes printed should be exactly like that 
+
+make the process efficient and without any integrity issues.
+Since the system is in production, we can not afford to break anything. so, please be very careful. 
+Since, testing confirmed that barcode printing and price-adjustment was totally working, avoid doing any drastic changes to the already working process.
